@@ -3,6 +3,7 @@
 import { BarChart3, FileText, Kanban, PlusCircle, Search, Settings, DollarSign, Bot } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
 
 import {
   Sidebar,
@@ -61,7 +62,13 @@ export function AppSidebar() {
     <Sidebar className="border-r border-gray-200">
       <SidebarHeader className="border-b border-gray-200 p-6">
         <div className="flex items-center gap-2">
-          <Bot className="h-8 w-8 text-blue-600" />
+           <Image
+            src="/Virgil_blue.png"
+            alt="My Logo"
+            width={32}
+            height={32}
+            className="h-8 w-8"
+          />
           <div>
             <h1 className="text-xl font-bold text-gray-900">Virgil.io</h1>
             <p className="text-sm text-gray-500">SAP Sales Assistant</p>
