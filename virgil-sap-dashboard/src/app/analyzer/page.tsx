@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react"
 
 export default function Analyzer() {
-  const [selectedCompany, setSelectedCompany] = useState("TechCorp Industries")
+  const [selectedCompany, setSelectedCompany] = useState<keyof typeof companyAnalyses>("TechCorp Industries")
 
   const companyAnalyses = {
     "TechCorp Industries": {
@@ -179,7 +179,7 @@ export default function Analyzer() {
           <CardTitle>Select Company to Analyze</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+          <Select value={selectedCompany} onValueChange={(value) => setSelectedCompany(value as keyof typeof companyAnalyses)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
