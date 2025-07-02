@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { Bot, Building2, Sparkles } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Bot, Building2, Sparkles, CheckCircle, AlertCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const industries = [
   "Manufacturing",
@@ -33,18 +34,15 @@ const companySizes = [
 
 const regions = ["North America", "Europe", "Asia Pacific", "Latin America", "Middle East & Africa"]
 
-const sapModules = [
-  "S/4HANA",
-  "Ariba",
-  "SuccessFactors",
-  "Concur",
-  "SAP Analytics Cloud",
-  "SAP Commerce Cloud",
-  "SAP Customer Experience",
-  "SAP Fieldglass",
-]
+interface SAPProduct {
+  id: number
+  product_name: string
+  product_category: string
+  description: string
+}
 
 export default function NewAccount() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     companyName: "",
     industry: "",
@@ -52,45 +50,134 @@ export default function NewAccount() {
     challenges: "",
     region: "",
   })
-  const [suggestedModules, setSuggestedModules] = useState<string[]>([])
+
+  const [suggestedModules, setSuggestedModules] = useState<SAPProduct[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState("")
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [createdCompanyId, setCreatedCompanyId] = useState<number | null>(null)
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = async (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    setError("") // Clear any previous errors
 
     // Auto-suggest SAP modules based on industry
     if (field === "industry" && value) {
-      const suggestions = getSuggestedModules(value)
-      setSuggestedModules(suggestions)
+      try {
+        const response = await fetch(`/api/sap-products?industry=${encodeURIComponent(value)}`)
+        if (response.ok) {
+          const products = await response.json()
+          setSuggestedModules(products.slice(0, 3)) // Show top 3 suggestions
+        }
+      } catch (err) {
+        console.error("Failed to fetch SAP products:", err)
+      }
     }
-  }
-
-  const getSuggestedModules = (industry: string): string[] => {
-    const moduleMap: Record<string, string[]> = {
-      Manufacturing: ["S/4HANA", "SAP Analytics Cloud", "Ariba"],
-      Retail: ["SAP Commerce Cloud", "S/4HANA", "SAP Customer Experience"],
-      "Financial Services": ["S/4HANA", "SAP Analytics Cloud", "Concur"],
-      Healthcare: ["SuccessFactors", "S/4HANA", "SAP Analytics Cloud"],
-      Technology: ["SuccessFactors", "Concur", "SAP Analytics Cloud"],
-      "Energy & Utilities": ["S/4HANA", "SAP Analytics Cloud", "Ariba"],
-      Government: ["S/4HANA", "SuccessFactors", "Concur"],
-      Education: ["SuccessFactors", "Concur", "S/4HANA"],
-    }
-    return moduleMap[industry] || []
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsAnalyzing(true)
+    setIsSubmitting(true)
+    setError("")
+    setSuccess("")
 
-    // Simulate GPT analysis
-    setTimeout(() => {
+    try {
+      // Validate form data
+      if (!formData.companyName || !formData.industry || !formData.size || !formData.region) {
+        throw new Error("Please fill in all required fields")
+      }
+
+      // Submit company data to database
+      const response = await fetch("/api/companies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.companyName,
+          industry: formData.industry,
+          company_size: formData.size,
+          region: formData.region,
+          business_challenges: formData.challenges,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to create company")
+      }
+
+      const newCompany = await response.json()
+      setCreatedCompanyId(newCompany.id)
+      setSuccess(`Successfully created account for ${formData.companyName}!`)
+
+      // Clear form
+      setFormData({
+        companyName: "",
+        industry: "",
+        size: "",
+        challenges: "",
+        region: "",
+      })
+      setSuggestedModules([])
+      setAnalysisResult("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleAIAnalysis = async () => {
+    if (!createdCompanyId) {
+      setError("Please save the company first before running AI analysis")
+      return
+    }
+
+    setIsAnalyzing(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/ai-analysis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          companyId: createdCompanyId,
+          analysisData: formData,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate AI analysis")
+      }
+
+      const { analysis } = await response.json()
+
       setAnalysisResult(
-        `Based on the information provided for ${formData.companyName}, this ${formData.industry.toLowerCase()} company appears to be a strong candidate for SAP solutions. Key recommendations include implementing ${suggestedModules.slice(0, 2).join(" and ")} to address their ${formData.challenges.toLowerCase()} challenges. The ${formData.size.toLowerCase()} size suggests they would benefit from a phased implementation approach.`,
+        `AI Analysis Results for ${formData.companyName || "this company"}:
+        
+• Overall SAP Fit: ${analysis.overallFit} (${analysis.fitScore}% match)
+• Estimated ROI: ${analysis.estimatedROI}%
+• Implementation Timeline: ${analysis.implementationTime}
+• Key Recommendations: ${analysis.recommendations.join(", ")}
+
+This analysis suggests strong potential for SAP solutions with a phased implementation approach.`,
       )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate analysis")
+    } finally {
       setIsAnalyzing(false)
-    }, 2000)
+    }
+  }
+
+  const handleCreateDeal = () => {
+    if (createdCompanyId) {
+      router.push(`/pipeline?newDeal=true&companyId=${createdCompanyId}`)
+    }
   }
 
   return (
@@ -99,9 +186,24 @@ export default function NewAccount() {
         <SidebarTrigger />
         <div>
           <h1 className="text-3xl font-bold text-gray-900">New Account Intake</h1>
-          <p className="text-gray-600">Capture prospect information for AI-powered analysis</p>
+          <p className="text-gray-600">Capture prospect information and save to database</p>
         </div>
       </div>
+
+      {/* Error/Success Messages */}
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -114,7 +216,7 @@ export default function NewAccount() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="companyName">Company Name</Label>
+                <Label htmlFor="companyName">Company Name *</Label>
                 <Input
                   id="companyName"
                   value={formData.companyName}
@@ -125,8 +227,8 @@ export default function NewAccount() {
               </div>
 
               <div>
-                <Label htmlFor="industry">Industry</Label>
-                <Select onValueChange={(value) => handleInputChange("industry", value)}>
+                <Label htmlFor="industry">Industry *</Label>
+                <Select onValueChange={(value) => handleInputChange("industry", value)} value={formData.industry}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
@@ -141,8 +243,8 @@ export default function NewAccount() {
               </div>
 
               <div>
-                <Label htmlFor="size">Company Size</Label>
-                <Select onValueChange={(value) => handleInputChange("size", value)}>
+                <Label htmlFor="size">Company Size *</Label>
+                <Select onValueChange={(value) => handleInputChange("size", value)} value={formData.size}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select company size" />
                   </SelectTrigger>
@@ -157,8 +259,8 @@ export default function NewAccount() {
               </div>
 
               <div>
-                <Label htmlFor="region">Region</Label>
-                <Select onValueChange={(value) => handleInputChange("region", value)}>
+                <Label htmlFor="region">Region *</Label>
+                <Select onValueChange={(value) => handleInputChange("region", value)} value={formData.region}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select region" />
                   </SelectTrigger>
@@ -183,16 +285,16 @@ export default function NewAccount() {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isAnalyzing}>
-                {isAnalyzing ? (
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
                     <Bot className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
+                    Saving...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Analyze with AI
+                    <Building2 className="mr-2 h-4 w-4" />
+                    Save Account
                   </>
                 )}
               </Button>
@@ -207,14 +309,54 @@ export default function NewAccount() {
                 <CardTitle className="text-green-700">Suggested SAP Modules</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-3">
                   {suggestedModules.map((module) => (
-                    <Badge key={module} className="bg-green-100 text-green-800">
-                      {module}
-                    </Badge>
+                    <div key={module.id} className="p-3 border border-green-200 rounded-lg bg-green-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge className="bg-green-100 text-green-800">{module.product_name}</Badge>
+                        <span className="text-xs text-green-600">{module.product_category}</span>
+                      </div>
+                      <p className="text-sm text-gray-700">{module.description}</p>
+                    </div>
                   ))}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">Based on the selected industry: {formData.industry}</p>
+                <p className="text-sm text-gray-600 mt-3">
+                  Based on the selected industry: <strong>{formData.industry}</strong>
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {createdCompanyId && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-blue-600" />
+                  Next Steps
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  onClick={handleAIAnalysis}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Bot className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Run AI Analysis
+                    </>
+                  )}
+                </Button>
+
+                <Button onClick={handleCreateDeal} variant="outline" className="w-full bg-transparent">
+                  Create Deal Opportunity
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -228,13 +370,15 @@ export default function NewAccount() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 leading-relaxed">{analysisResult}</p>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <pre className="text-sm text-blue-900 whitespace-pre-wrap font-sans">{analysisResult}</pre>
+                </div>
                 <div className="mt-4 flex gap-2">
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                    Generate Fit Analysis
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={handleCreateDeal}>
+                    Create Deal
                   </Button>
-                  <Button size="sm" variant="outline">
-                    Create Deck
+                  <Button size="sm" variant="outline" onClick={() => router.push("/analyzer")}>
+                    View Full Analysis
                   </Button>
                 </div>
               </CardContent>
