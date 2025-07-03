@@ -70,7 +70,7 @@ export function AppSidebar() {
             className="h-8 w-8"
           />
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Virgil.io</h1>
+            <h1 className="text-xl font-bold text-gray-900">Virgil AI</h1>
             <p className="text-sm text-gray-500">SAP Sales Assistant</p>
           </div>
         </div>
