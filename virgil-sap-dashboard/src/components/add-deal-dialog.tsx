@@ -29,7 +29,8 @@ interface AddDealDialogProps {
   onDealCreated: () => void
 }
 
-const stages = ["Discovery", "Proposal", "Demo", "Negotiation"]
+// Ensure exact same stages array as in pipeline
+const stages = ["Discovery", "Proposal", "Demo", "Negotiation", "Closed"]
 
 export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
   const [open, setOpen] = useState(false)
