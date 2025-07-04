@@ -1011,21 +1011,10 @@ Timeline: [X] weeks to project kickoff`
 
           {slides.length > 0 && (
             <Card className="border-dashed border-2 border-gray-300">
-              <CardContent className="flex items-center justify-center py-8">
-                <div className="flex gap-2">
-                  {slideTemplates.map((template) => (
-                    <Button
-                      key={template.type}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addManualSlide(template.type)}
-                      className="text-gray-600 bg-transparent"
-                    >
-                      <template.icon className="mr-2 h-4 w-4" />
-                      Add {template.name}
-                    </Button>
-                  ))}
-                </div>
+              <CardContent className="flex items-center justify-center py-4">
+                <p className="text-gray-500 text-sm">
+                  Use the slide templates in the configuration panel to add more slides
+                </p>
               </CardContent>
             </Card>
           )}
