@@ -24,7 +24,7 @@ import {
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
-const stages = ["Discovery", "Proposal", "Demo", "Negotiation", "Closed"]
+const stages = ["Discovery", "Proposal", "Demo", "Negotiation", "Closed-Won"]
 
 interface Deal {
   id: number
@@ -47,7 +47,7 @@ const getStageColor = (stage: string) => {
       return "bg-purple-100 text-purple-800 border-purple-200"
     case "Negotiation":
       return "bg-orange-100 text-orange-800 border-orange-200"
-    case "Closed":
+    case "Closed-Won":
       return "bg-green-100 text-green-800 border-green-200"
     default:
       return "bg-gray-100 text-gray-800 border-gray-200"
@@ -108,29 +108,29 @@ function DealCard({ deal, isDragging = false }: DealCardProps) {
     <Card
       ref={setNodeRef}
       style={style}
-      className={`cursor-grab hover:shadow-md transition-shadow ${
+      className={`cursor-grab hover:shadow-md transition-shadow w-full ${
         isDragging || isSortableDragging ? "shadow-lg ring-2 ring-blue-500" : ""
       }`}
       {...attributes}
     >
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-2 flex-1">
-              <div {...listeners} className="mt-1 cursor-grab hover:text-gray-600 transition-colors">
+      <CardContent className="p-3">
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <div {...listeners} className="mt-0.5 cursor-grab hover:text-gray-600 transition-colors flex-shrink-0">
                 <GripVertical className="h-4 w-4 text-gray-400" />
               </div>
-              <Building2 className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+              <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <h4 className="font-medium text-gray-900 text-sm leading-tight">
+                <h4 className="font-medium text-gray-900 text-sm leading-tight break-words">
                   {deal.company_name || "Unknown Company"}
                 </h4>
-                <p className="text-xs text-gray-600 truncate">{deal.deal_name}</p>
+                <p className="text-xs text-gray-600 break-words line-clamp-2">{deal.deal_name}</p>
               </div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -144,21 +144,23 @@ function DealCard({ deal, isDragging = false }: DealCardProps) {
           </div>
 
           <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-3 w-3 text-green-600" />
-            <span className="font-medium text-green-600">{formatCurrency(deal.deal_value || 0)}</span>
+            <DollarSign className="h-3 w-3 text-green-600 flex-shrink-0" />
+            <span className="font-medium text-green-600 truncate">{formatCurrency(deal.deal_value || 0)}</span>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <User className="h-3 w-3" />
+            <User className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{deal.ae_name || "Unassigned"}</span>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Calendar className="h-3 w-3" />
-            <span>{formatDate(deal.last_activity)}</span>
+            <Calendar className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{formatDate(deal.last_activity)}</span>
           </div>
 
-          {deal.notes && <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">{deal.notes}</p>}
+          {deal.notes && (
+            <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded break-words line-clamp-3">{deal.notes}</p>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -172,21 +174,21 @@ interface DroppableStageProps {
 }
 
 function DroppableStage({ stage, children, isOver = false }: DroppableStageProps) {
-  const { setNodeRef } = useDroppable({
-    id: `stage-${stage}`,
+  const { setNodeRef, isOver: isDroppableOver } = useDroppable({
+    id: `droppable-${stage}`,
     data: {
       type: "stage",
-      stage: stage, // Explicitly set the stage name
+      stage: stage,
     },
   })
 
   return (
     <div
       ref={setNodeRef}
-      className={`space-y-3 min-h-[400px] p-2 rounded-lg border-2 border-dashed transition-colors ${
-        isOver ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50/50"
+      className={`space-y-3 min-h-[400px] p-3 rounded-lg border-2 border-dashed transition-all duration-200 ${
+        isOver || isDroppableOver ? "border-blue-400 bg-blue-50/50" : "border-gray-200 bg-gray-50/30"
       }`}
-      data-stage={stage} // Add data attribute for debugging
+      data-stage={stage}
     >
       {children}
     </div>
@@ -274,10 +276,13 @@ export default function Pipeline() {
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event
-    if (over && over.data.current?.type === "stage") {
-      const targetStage = over.data.current.stage
-      setActiveStage(targetStage)
-      console.log("🎯 Dragging over stage:", targetStage)
+    if (over) {
+      // Extract stage from droppable ID
+      const targetStage = over.id.toString().replace("droppable-", "")
+      if (stages.includes(targetStage)) {
+        setActiveStage(targetStage)
+        console.log("🎯 Dragging over stage:", targetStage)
+      }
     } else {
       setActiveStage(null)
     }
@@ -288,7 +293,7 @@ export default function Pipeline() {
     setActiveDeal(null)
     setActiveStage(null)
 
-    console.log("🎯 Drag ended - Active:", active.id, "Over:", over?.id)
+    console.log("🎯 Drag ended - Active:", active.id, "Over:", over?.id, "Over data:", over?.data?.current)
 
     if (!over) {
       console.log("🎯 Drag ended with no drop target")
@@ -296,18 +301,23 @@ export default function Pipeline() {
     }
 
     const dealId = active.id.toString().replace("deal-", "")
-    let newStage: string
 
-    // Check if dropped on a stage
+    // Extract stage from droppable ID
+    let newStage: string
     if (over.data.current?.type === "stage") {
       newStage = over.data.current.stage
-      console.log("🎯 Dropped on stage:", newStage)
     } else {
-      console.log("🎯 Could not determine target stage, over data:", over.data.current)
-      return
+      // Fallback: extract from ID
+      newStage = over.id.toString().replace("droppable-", "")
     }
 
     console.log("🎯 Attempting to move deal", dealId, "to stage", newStage)
+
+    // Validate that newStage is a valid stage
+    if (!stages.includes(newStage)) {
+      console.error("🎯 Invalid target stage:", newStage, "Valid stages:", stages)
+      return
+    }
 
     // Find the deal being moved
     const deal = deals.find((d) => d.id.toString() === dealId)
@@ -332,19 +342,32 @@ export default function Pipeline() {
 
     try {
       console.log("🔄 Making API call to update deal...")
+      const requestBody = { stage: newStage }
+      console.log("📤 Request body:", requestBody)
+
       const response = await fetch(`/api/deals/${dealId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ stage: newStage }),
+        body: JSON.stringify(requestBody),
       })
 
       console.log("📡 API response status:", response.status)
+      console.log("📡 API response headers:", Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error("❌ API error:", errorData)
+        const errorText = await response.text()
+        console.error("❌ API error response text:", errorText)
+
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: errorText || `HTTP ${response.status}` }
+        }
+
+        console.error("❌ API error data:", errorData)
         throw new Error(errorData.error || `HTTP ${response.status}`)
       }
 
@@ -357,7 +380,9 @@ export default function Pipeline() {
       console.error("❌ Error updating deal:", error)
       // Revert the optimistic update
       setDeals((prevDeals) => prevDeals.map((d) => (d.id.toString() === dealId ? { ...d, stage: deal.stage } : d)))
-      alert(`Failed to move deal: ${error instanceof Error ? error.message : "Unknown error"}`)
+
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      alert(`Failed to move deal: ${errorMessage}`)
     }
   }
 
@@ -446,7 +471,7 @@ export default function Pipeline() {
         {/* Kanban Board */}
         <div className="grid gap-6 md:grid-cols-5 min-h-[600px]">
           {stages.map((stage) => (
-            <div key={stage} className="space-y-4">
+            <div key={stage} className="space-y-4 min-w-0">
               <div className={`p-3 rounded-lg border-2 ${getStageColor(stage)}`}>
                 <h3 className="font-semibold text-center">{stage}</h3>
                 <p className="text-sm text-center opacity-75">
