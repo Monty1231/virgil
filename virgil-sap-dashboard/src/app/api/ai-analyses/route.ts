@@ -43,12 +43,11 @@ export async function GET(request: Request) {
         let params: any[] = []
 
         if (companyId) {
-          // Get analyses for specific company
+          // Get analyses for specific company - simplified query to avoid column issues
           query = `
             SELECT 
               a.id,
               a.company_id,
-              a.analysis_type,
               a.analysis_results,
               a.confidence_score,
               a.created_at,
@@ -59,7 +58,7 @@ export async function GET(request: Request) {
             JOIN companies c ON a.company_id = c.id
             WHERE a.company_id = $1
             ORDER BY a.created_at DESC
-            LIMIT 5
+            LIMIT 10
           `
           params = [Number.parseInt(companyId)]
         } else {
@@ -68,7 +67,6 @@ export async function GET(request: Request) {
             SELECT 
               a.id,
               a.company_id,
-              a.analysis_type,
               a.analysis_results,
               a.confidence_score,
               a.created_at,
@@ -96,7 +94,6 @@ export async function GET(request: Request) {
             SELECT 
               a.id,
               a.company_id,
-              a.analysis_type,
               a.analysis_results,
               a.confidence_score,
               a.created_at,
@@ -107,7 +104,7 @@ export async function GET(request: Request) {
             JOIN companies c ON a.company_id = c.id
             WHERE a.company_id = $1
             ORDER BY a.created_at DESC
-            LIMIT 5
+            LIMIT 10
             `,
             [Number.parseInt(companyId)]
           )
@@ -119,7 +116,6 @@ export async function GET(request: Request) {
             SELECT 
               a.id,
               a.company_id,
-              a.analysis_type,
               a.analysis_results,
               a.confidence_score,
               a.created_at,
@@ -137,7 +133,38 @@ export async function GET(request: Request) {
       }
 
       console.log("📊 AI Analyses API: Found", analyses.length, "analyses")
-      return NextResponse.json(analyses)
+
+      // Process the results to ensure analysis_results is properly parsed
+      const processedAnalyses = analyses.map((analysis: any) => {
+        let analysisResults = analysis.analysis_results
+
+        // If analysis_results is a string, parse it
+        if (typeof analysisResults === "string") {
+          try {
+            analysisResults = JSON.parse(analysisResults)
+          } catch (parseError) {
+            console.error("📊 Failed to parse analysis_results for ID", analysis.id, ":", parseError)
+            analysisResults = null
+          }
+        }
+
+        return {
+          id: analysis.id,
+          company_id: analysis.company_id,
+          company_name: analysis.company_name,
+          industry: analysis.industry,
+          company_size: analysis.company_size,
+          analysis_results: analysisResults,
+          confidence_score: analysis.confidence_score,
+          created_at: analysis.created_at,
+        }
+      })
+
+      // Filter out analyses with invalid results
+      const validAnalyses = processedAnalyses.filter((analysis: any) => analysis.analysis_results !== null)
+
+      console.log("📊 AI Analyses API: Returning", validAnalyses.length, "valid analyses")
+      return NextResponse.json(validAnalyses)
     } catch (dbError) {
       console.error("📊 AI Analyses API: Database error:", dbError)
 

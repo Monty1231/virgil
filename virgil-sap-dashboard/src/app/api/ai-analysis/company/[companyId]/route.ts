@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server'
-import sql from '@/lib/db'
-import { openai } from '@ai-sdk/openai'
-import { generateObject } from 'ai'
-import { z } from 'zod'
+import { NextResponse } from "next/server"
+import { openai } from "@ai-sdk/openai"
+import { generateObject } from "ai"
+import { z } from "zod"
 
 // Define the schema for AI analysis response
 const analysisSchema = z.object({
@@ -27,78 +26,151 @@ const analysisSchema = z.object({
   riskFactors: z.array(z.string()).describe("Potential risks or challenges for implementation"),
 })
 
-export async function GET(
-  request: Request,
-  { params }: { params: { companyId: string } }
-) {
-  // Validate environment variables
-  const { DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, OPENAI_API_KEY } = process.env
-  if (!DB_HOST || !DB_NAME || !DB_USER || !DB_PASSWORD) {
-    return NextResponse.json(
-      {
-        error: 'Database not configured',
-        details: 'Set DB_HOST, DB_NAME, DB_USER & DB_PASSWORD in .env.local',
-      },
-      { status: 500 }
-    )
-  }
-  if (!OPENAI_API_KEY) {
-    return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
-  }
-
-  // Parse companyId
-  const companyId = Number(params.companyId)
-  if (isNaN(companyId)) {
-    return NextResponse.json({ error: 'Invalid company ID' }, { status: 400 })
-  }
-
-  // Fetch company from database
-  let company
+export async function GET(request: Request, context: { params: Promise<{ companyId: string }> }) {
   try {
-    const { rows } = await sql.query(
-      `
-      SELECT
-        id,
-        name,
-        industry,
-        company_size,
-        region,
-        annual_revenue,
-        employee_count,
-        business_challenges,
-        current_systems
-      FROM companies
-      WHERE id = $1
-      `,
-      [companyId]
-    )
-    if (rows.length === 0) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 })
-    }
-    company = rows[0]
-  } catch (dbError) {
-    return NextResponse.json(
-      {
-        error: 'Database query failed',
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error',
-      },
-      { status: 500 }
-    )
-  }
+    // Await params for Next.js 15 compatibility
+    const params = await context.params
+    console.log("🤖 AI Analysis: Route called with params:", params)
 
-  // Build AI prompt
-  const analysisPrompt = `
-You are an expert SAP sales consultant analyzing a potential customer for SAP solutions.
+    const companyId = Number.parseInt(params.companyId)
+
+    if (isNaN(companyId)) {
+      console.error("🤖 AI Analysis: Invalid company ID:", params.companyId)
+      return NextResponse.json({ error: "Invalid company ID" }, { status: 400 })
+    }
+
+    console.log("🤖 AI Analysis: Starting analysis for company ID:", companyId)
+
+    // Check environment variables
+    const { DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, OPENAI_API_KEY, DATABASE_URL } = process.env
+
+    // Support both database configurations
+    const hasCustomDB = DB_HOST && DB_NAME && DB_USER && DB_PASSWORD
+    const hasNeonDB = DATABASE_URL
+
+    if (!hasCustomDB && !hasNeonDB) {
+      console.error("🤖 AI Analysis: No database configuration found")
+      return NextResponse.json(
+        {
+          error: "Database not configured",
+          details: "Set either DATABASE_URL or (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD) in .env.local",
+        },
+        { status: 500 },
+      )
+    }
+
+    if (!OPENAI_API_KEY) {
+      console.error("🤖 AI Analysis: OPENAI_API_KEY not found in environment")
+      return NextResponse.json(
+        {
+          error: "OpenAI API key not configured",
+          details: "Please set OPENAI_API_KEY environment variable in .env.local",
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log("🤖 AI Analysis: Environment variables OK")
+
+    // Get company details from database
+    let company
+    try {
+      console.log("🤖 AI Analysis: Querying database for company...")
+
+      if (hasCustomDB) {
+        // Use your custom database setup
+        const { Pool } = require("pg")
+        const pool = new Pool({
+          host: DB_HOST,
+          database: DB_NAME,
+          user: DB_USER,
+          password: DB_PASSWORD,
+          port: process.env.DB_PORT || 5432,
+          ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+        })
+
+        const result = await pool.query(
+          `
+          SELECT 
+            id,
+            name,
+            industry,
+            company_size,
+            region,
+            annual_revenue,
+            employee_count,
+            business_challenges,
+            current_systems
+          FROM companies 
+          WHERE id = $1
+          `,
+          [companyId],
+        )
+
+        if (result.rows.length === 0) {
+          console.error("🤖 AI Analysis: Company not found with ID:", companyId)
+          return NextResponse.json({ error: "Company not found" }, { status: 404 })
+        }
+
+        company = result.rows[0]
+        await pool.end()
+      } else {
+        // Use Neon database setup (fallback to existing code)
+        const sql = (await import("@/lib/db")).default
+        const result = await sql.query(
+          `
+          SELECT 
+            id,
+            name,
+            industry,
+            company_size,
+            region,
+            annual_revenue,
+            employee_count,
+            business_challenges,
+            current_systems
+          FROM companies 
+          WHERE id = $1
+          `,
+          [companyId]
+        )
+
+        if (result.rows.length === 0) {
+          console.error("🤖 AI Analysis: Company not found with ID:", companyId)
+          return NextResponse.json({ error: "Company not found" }, { status: 404 })
+        }
+
+        company = result.rows[0]
+      }
+
+      console.log("🤖 AI Analysis: Database query result:", company?.name || "No company found")
+    } catch (dbError) {
+      console.error("🤖 AI Analysis: Database error:", dbError)
+      return NextResponse.json(
+        {
+          error: "Database query failed",
+          details: dbError instanceof Error ? dbError.message : "Unknown database error",
+        },
+        { status: 500 },
+      )
+    }
+
+    const companyData = company
+    console.log("🤖 AI Analysis: Company data loaded:", companyData.name, companyData.industry)
+
+    // Create a comprehensive prompt for OpenAI
+    const analysisPrompt = `
+You are an expert SAP sales consultant analyzing a potential customer for SAP solutions. 
 
 Company Details:
-- Name: ${company.name}
-- Industry: ${company.industry}
-- Size: ${company.company_size}
-- Region: ${company.region}
-- Annual Revenue: ${company.annual_revenue ? `$${company.annual_revenue.toLocaleString()}` : 'Not specified'}
-- Employee Count: ${company.employee_count || 'Not specified'}
-- Business Challenges: ${company.business_challenges || 'Not specified'}
-- Current Systems: ${company.current_systems || 'Legacy systems (assumed)'}
+- Name: ${companyData.name}
+- Industry: ${companyData.industry}
+- Size: ${companyData.company_size}
+- Region: ${companyData.region}
+- Annual Revenue: ${companyData.annual_revenue ? `$${companyData.annual_revenue.toLocaleString()}` : "Not specified"}
+- Employee Count: ${companyData.employee_count || "Not specified"}
+- Business Challenges: ${companyData.business_challenges || "Not specified"}
+- Current Systems: ${companyData.current_systems || "Legacy systems (assumed)"}
 
 Based on this company profile, provide a comprehensive SAP fit analysis including:
 
@@ -119,51 +191,134 @@ For cost estimates, use these general ranges:
 - Analytics Cloud: $75K-$600K
 - Commerce Cloud: $200K-$1M
 
-Adjust based on company size and complexity.
+Adjust based on company size and complexity. Provide 2-4 solution recommendations prioritized by fit and business impact.
 `
 
-  // Generate AI analysis
-  let result
-  try {
-    result = await generateObject({
-      model: openai('gpt-4o'),
-      prompt: analysisPrompt,
-      schema: analysisSchema,
-    })
-  } catch (aiError) {
-    const msg = aiError instanceof Error ? aiError.message : 'Unknown AI error'
-    const status = msg.includes('401') || msg.includes('API key') ? 500 : msg.includes('429') ? 500 : 500
-    return NextResponse.json({ error: 'AI generation failed', details: msg }, { status })
-  }
+    console.log("🤖 AI Analysis: Generating analysis with OpenAI...")
+    console.log("🤖 AI Analysis: Prompt length:", analysisPrompt.length, "characters")
 
-  // (Optional) Save analysis to DB
-  try {
-    await sql.query(
-      `
-      INSERT INTO ai_analyses (
-        company_id,
-        analysis_type,
-        input_data,
-        analysis_results,
-        confidence_score,
-        generated_by,
-        model_version
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7)
-      `,
-      [
-        company.id,
-        'comprehensive_fit_assessment',
-        JSON.stringify({ company: company.name, industry: company.industry, size: company.company_size, region: company.region }),
-        JSON.stringify(result.object),
-        result.object.fitScore,
-        1,
-        'gpt-4o',
-      ]
+    // Generate AI analysis using OpenAI
+    let result
+    try {
+      result = await generateObject({
+        model: openai("gpt-4o"),
+        prompt: analysisPrompt,
+        schema: analysisSchema,
+      })
+      console.log("🤖 AI Analysis: OpenAI generation successful")
+    } catch (aiError) {
+      console.error("🤖 AI Analysis: OpenAI generation error:", aiError)
+
+      // Check if it's an API key issue
+      if (
+        aiError instanceof Error &&
+        (aiError.message.includes("401") || aiError.message.includes("API key"))
+      ) {
+        return NextResponse.json(
+          {
+            error: "Invalid OpenAI API key",
+            details: "Please check your OPENAI_API_KEY in .env.local",
+          },
+          { status: 500 },
+        )
+      }
+
+      // Check if it's a quota/billing issue
+      if (
+        aiError instanceof Error &&
+        (aiError.message.includes("429") || aiError.message.includes("quota"))
+      ) {
+        return NextResponse.json(
+          {
+            error: "OpenAI API quota exceeded",
+            details: "Please check your OpenAI billing and usage limits",
+          },
+          { status: 500 },
+        )
+      }
+
+      return NextResponse.json(
+        {
+          error: "AI generation failed",
+          details: aiError instanceof Error ? aiError.message : "Unknown AI error",
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log("🤖 AI Analysis: Generated analysis for", companyData.name)
+    console.log("🤖 AI Analysis: Fit score:", result.object.fitScore)
+    console.log("🤖 AI Analysis: Solutions count:", result.object.recommendedSolutions.length)
+
+    // Store the analysis in the database for future reference
+    try {
+      if (hasCustomDB) {
+        // Use your custom database setup for saving
+        const { Pool } = require("pg")
+        const pool = new Pool({
+          host: DB_HOST,
+          database: DB_NAME,
+          user: DB_USER,
+          password: DB_PASSWORD,
+          port: process.env.DB_PORT || 5432,
+          ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+        })
+
+        await pool.query(
+          `
+          INSERT INTO ai_analyses (
+            company_id, 
+            analysis_results, 
+            confidence_score,
+            created_at
+          ) VALUES ($1, $2, $3, $4)
+          `,
+          [companyId, JSON.stringify(result.object), result.object.fitScore, new Date()],
+        )
+
+        await pool.end()
+      } else {
+        // Use Neon database setup
+        const sql = (await import("@/lib/db")).default
+        await sql.query(
+          `
+          INSERT INTO ai_analyses (
+            company_id, 
+            analysis_results, 
+            confidence_score,
+            created_at
+          )
+          VALUES ($1, $2, $3, $4)
+          `,
+          [companyId, JSON.stringify(result.object), result.object.fitScore, new Date()]
+        )
+      }
+
+      console.log("🤖 AI Analysis: Saved to database successfully")
+    } catch (dbError) {
+      console.error("🤖 AI Analysis: Failed to save to database:", dbError)
+      // Continue anyway - don't fail the request if we can't save
+    }
+
+    const response = {
+      company: companyData,
+      analysis: result.object,
+      generatedAt: new Date().toISOString(),
+    }
+
+    console.log("🤖 AI Analysis: Returning successful response")
+    return NextResponse.json(response)
+  } catch (error) {
+    console.error("🤖 AI Analysis: Unexpected error:", error)
+    console.error("🤖 AI Analysis: Error stack:", error instanceof Error ? error.stack : "No stack trace")
+
+    return NextResponse.json(
+      {
+        error: "Failed to generate AI analysis",
+        details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
     )
-  } catch {
-    // Ignore save errors
   }
-
-  // Return response
-  return NextResponse.json({ company, analysis: result.object, generatedAt: new Date().toISOString() })
 }
