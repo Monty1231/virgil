@@ -26,6 +26,7 @@ import {
   Wand2,
   Plus,
   Trash2,
+  Loader2,
 } from "lucide-react"
 
 interface Company {
@@ -96,6 +97,7 @@ export default function Decks() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deckMode, setDeckMode] = useState<"manual" | "ai">("manual")
+  const [isExporting, setIsExporting] = useState<string | null>(null)
 
   // Form data for manual deck creation
   const [deckConfig, setDeckConfig] = useState({
@@ -611,6 +613,60 @@ Timeline: [X] weeks to project kickoff`
     return template?.icon || FileText
   }
 
+  const handleExport = async (format: "powerpoint" | "pdf" | "google-slides") => {
+    if (slides.length === 0) {
+      setError("No slides to export. Please create some slides first.")
+      return
+    }
+
+    setIsExporting(format)
+    setError(null)
+
+    try {
+      console.log(`📤 Exporting to ${format}...`)
+
+      const response = await fetch(`/api/export/${format}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          slides,
+          deckConfig,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Failed to export to ${format}`)
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get("Content-Disposition")
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1]?.replace(/"/g, "")
+        : `presentation.${format === "powerpoint" ? "pptx" : format === "pdf" ? "pdf" : "html"}`
+
+      // Create blob and download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      console.log(`✅ Successfully exported to ${format}`)
+    } catch (error) {
+      console.error(`❌ Export to ${format} failed:`, error)
+      setError(`Failed to export to ${format}: ${error instanceof Error ? error.message : "Unknown error"}`)
+    } finally {
+      setIsExporting(null)
+    }
+  }
+
   return (
     <div className="flex-1 space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -626,9 +682,17 @@ Timeline: [X] weeks to project kickoff`
             <Eye className="mr-2 h-4 w-4" />
             Preview
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Download className="mr-2 h-4 w-4" />
-            Export
+          <Button
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => handleExport("powerpoint")}
+            disabled={slides.length === 0 || isExporting !== null}
+          >
+            {isExporting === "powerpoint" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Export PowerPoint
           </Button>
         </div>
       </div>
@@ -852,16 +916,46 @@ Timeline: [X] weeks to project kickoff`
             <div className="pt-4 border-t">
               <h4 className="font-medium mb-2">Export Options</h4>
               <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
-                  <ImageIcon className="mr-2 h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start bg-transparent"
+                  onClick={() => handleExport("google-slides")}
+                  disabled={slides.length === 0 || isExporting !== null}
+                >
+                  {isExporting === "google-slides" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                  )}
                   Google Slides
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
-                  <FileText className="mr-2 h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start bg-transparent"
+                  onClick={() => handleExport("powerpoint")}
+                  disabled={slides.length === 0 || isExporting !== null}
+                >
+                  {isExporting === "powerpoint" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
                   PowerPoint
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
-                  <Download className="mr-2 h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start bg-transparent"
+                  onClick={() => handleExport("pdf")}
+                  disabled={slides.length === 0 || isExporting !== null}
+                >
+                  {isExporting === "pdf" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
                   PDF
                 </Button>
               </div>
