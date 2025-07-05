@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -27,6 +29,8 @@ import {
   Plus,
   Trash2,
   Loader2,
+  Palette,
+  Upload,
 } from "lucide-react"
 
 interface Company {
@@ -73,6 +77,14 @@ interface Slide {
   order: number
 }
 
+interface BackgroundOption {
+  id: string
+  name: string
+  type: "solid" | "gradient" | "image"
+  value: string
+  preview: string
+}
+
 const slideTemplates = [
   { type: "title", name: "Title Slide", icon: Presentation },
   { type: "executive_summary", name: "Executive Summary", icon: FileText },
@@ -84,6 +96,34 @@ const slideTemplates = [
   { type: "implementation_roadmap", name: "Implementation Roadmap", icon: FileText },
   { type: "investment_summary", name: "Investment Summary", icon: FileText },
   { type: "next_steps", name: "Next Steps", icon: CheckCircle },
+]
+
+const backgroundOptions: BackgroundOption[] = [
+  { id: "white", name: "Clean White", type: "solid", value: "FFFFFF", preview: "#FFFFFF" },
+  { id: "virgil-navy", name: "Virgil Navy", type: "solid", value: "1e3a5f", preview: "#1e3a5f" },
+  { id: "light-gray", name: "Light Gray", type: "solid", value: "f8fafc", preview: "#f8fafc" },
+  { id: "dark-blue", name: "Professional Blue", type: "solid", value: "1e40af", preview: "#1e40af" },
+  {
+    id: "navy-gradient",
+    name: "Navy Gradient",
+    type: "gradient",
+    value: "linear-gradient(135deg, #1e3a5f 0%, #3b82f6 100%)",
+    preview: "linear-gradient(135deg, #1e3a5f 0%, #3b82f6 100%)",
+  },
+  {
+    id: "blue-gradient",
+    name: "Blue Gradient",
+    type: "gradient",
+    value: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+    preview: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+  },
+  {
+    id: "subtle-gradient",
+    name: "Subtle Gray",
+    type: "gradient",
+    value: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+    preview: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+  },
 ]
 
 export default function Decks() {
@@ -98,6 +138,8 @@ export default function Decks() {
   const [error, setError] = useState<string | null>(null)
   const [deckMode, setDeckMode] = useState<"manual" | "ai">("manual")
   const [isExporting, setIsExporting] = useState<string | null>(null)
+  const [selectedBackground, setSelectedBackground] = useState<BackgroundOption>(backgroundOptions[0])
+  const [customBackgroundImage, setCustomBackgroundImage] = useState<string | null>(null)
 
   // Form data for manual deck creation
   const [deckConfig, setDeckConfig] = useState({
@@ -613,6 +655,25 @@ Timeline: [X] weeks to project kickoff`
     return template?.icon || FileText
   }
 
+  const handleBackgroundImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        setCustomBackgroundImage(result)
+        setSelectedBackground({
+          id: "custom",
+          name: "Custom Image",
+          type: "image",
+          value: result,
+          preview: result,
+        })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleExport = async (format: "powerpoint" | "pdf" | "google-slides") => {
     if (slides.length === 0) {
       setError("No slides to export. Please create some slides first.")
@@ -633,6 +694,7 @@ Timeline: [X] weeks to project kickoff`
         body: JSON.stringify({
           slides,
           deckConfig,
+          background: selectedBackground,
         }),
       })
 
@@ -767,6 +829,66 @@ Timeline: [X] weeks to project kickoff`
                 value={deckConfig.presentationDate}
                 onChange={(e) => setDeckConfig((prev) => ({ ...prev, presentationDate: e.target.value }))}
               />
+            </div>
+
+            {/* Background Selection */}
+            <div>
+              <Label className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Slide Background
+              </Label>
+              <div className="space-y-3 mt-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {backgroundOptions.map((bg) => (
+                    <button
+                      key={bg.id}
+                      onClick={() => setSelectedBackground(bg)}
+                      className={`relative h-12 rounded-md border-2 transition-all ${
+                        selectedBackground.id === bg.id
+                          ? "border-blue-500 ring-2 ring-blue-200"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      style={{
+                        background: bg.type === "gradient" ? bg.preview : bg.preview,
+                      }}
+                      title={bg.name}
+                    >
+                      {selectedBackground.id === bg.id && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <CheckCircle className="h-4 w-4 text-white drop-shadow-lg" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="text-sm text-gray-600">
+                  Selected: <span className="font-medium">{selectedBackground.name}</span>
+                </div>
+
+                {/* Custom Image Upload */}
+                <div className="border-t pt-3">
+                  <Label htmlFor="background-upload" className="text-sm">
+                    Or upload custom background:
+                  </Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      id="background-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBackgroundImageUpload}
+                      className="text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("background-upload")?.click()}
+                    >
+                      <Upload className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {deckMode === "ai" && (
@@ -1093,8 +1215,27 @@ Timeline: [X] weeks to project kickoff`
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-gray-50 p-4 rounded-lg border-2 border-dashed border-gray-200">
-                        <div className="whitespace-pre-line text-sm text-gray-700">{slide.content}</div>
+                      <div
+                        className="p-4 rounded-lg border-2 border-dashed border-gray-200 relative"
+                        style={{
+                          background:
+                            selectedBackground.type === "gradient"
+                              ? selectedBackground.preview
+                              : selectedBackground.preview,
+                          color:
+                            selectedBackground.id === "white" ||
+                            selectedBackground.id === "light-gray" ||
+                            selectedBackground.id === "subtle-gradient"
+                              ? "#1f2937"
+                              : "#ffffff",
+                        }}
+                      >
+                        <div className="whitespace-pre-line text-sm">{slide.content}</div>
+                        <div className="absolute top-2 right-2">
+                          <Badge variant="secondary" className="text-xs opacity-75">
+                            Preview with {selectedBackground.name}
+                          </Badge>
+                        </div>
                       </div>
                     )}
                   </CardContent>

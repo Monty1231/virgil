@@ -61,14 +61,16 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-gray-200">
       <SidebarHeader className="border-b border-gray-200 p-6">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <div className="flex-shrink-12">
            <Image
-            src="/Virgil_blue.png"
+            src="/Virgil_blue.svg"
             alt="My Logo"
             width={32}
             height={32}
-            className="h-8 w-8"
+            className="h-40 w-40 rounded-full object-cover"
           />
+          </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Virgil AI</h1>
             <p className="text-sm text-gray-500">SAP Sales Assistant</p>
