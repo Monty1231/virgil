@@ -1,15 +1,14 @@
 "use client"
 
-import React from "react"
+import React, { ReactElement, useState } from "react"
+import { Image as ImageIcon } from "lucide-react"
 
-import type { ReactElement } from "react"
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -29,11 +28,15 @@ import {
   Calendar,
   DollarSign,
   Target,
-  TrendingUp,
   Save,
   Loader2,
   Plus,
   X,
+  Upload,
+  FileText,
+  Paperclip,
+  Download,
+  Trash2,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -88,11 +91,22 @@ const priorities = [
   { value: "low", label: "Low Priority", color: "bg-green-100 text-green-800" },
 ]
 
+const fileTypes = [
+  { value: "requirements", label: "Requirements Document", icon: FileText },
+  { value: "org_chart", label: "Organizational Chart", icon: Users },
+  { value: "current_systems", label: "Current Systems Documentation", icon: Building2 },
+  { value: "financial", label: "Financial Information", icon: DollarSign },
+  { value: "presentation", label: "Company Presentation", icon: ImageIcon },
+  { value: "other", label: "Other", icon: Paperclip },
+]
+
 interface SAPProduct {
   id: number
   product_name: string
   product_category: string
   description: string
+  confidence_score?: number
+  reasoning?: string
 }
 
 interface ContactPerson {
@@ -100,6 +114,16 @@ interface ContactPerson {
   title: string
   email: string
   phone: string
+}
+
+interface UploadedFile {
+  id: string
+  name: string
+  size: number
+  type: string
+  category: string
+  url?: string
+  uploadedAt: Date
 }
 
 export default function NewAccount(): ReactElement {
@@ -129,7 +153,10 @@ export default function NewAccount(): ReactElement {
     tags: [] as string[],
   })
 
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [isUploading, setIsUploading] = useState(false)
   const [suggestedModules, setSuggestedModules] = useState<SAPProduct[]>([])
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState("")
@@ -146,7 +173,7 @@ export default function NewAccount(): ReactElement {
       icon: Target,
       fields: ["challenges", "currentSystems", "budget", "timeline", "priority"],
     },
-    { title: "Contacts", icon: Users, fields: ["primaryContact"] },
+    { title: "Contacts & Files", icon: Users, fields: ["primaryContact"] },
     { title: "Additional Info", icon: Plus, fields: ["notes", "tags"] },
   ]
 
@@ -210,17 +237,40 @@ export default function NewAccount(): ReactElement {
     setError("")
     setValidationErrors((prev) => ({ ...prev, [field]: "" }))
 
-    // Auto-suggest SAP modules based on industry
+    // Generate AI-powered SAP module recommendations
     if (field === "industry" && typeof value === "string" && value) {
-      try {
-        const response = await fetch(`/api/sap-products?industry=${encodeURIComponent(value)}`)
-        if (response.ok) {
-          const products = await response.json()
-          setSuggestedModules(products.slice(0, 4))
-        }
-      } catch (err) {
-        console.error("Failed to fetch SAP products:", err)
+      await generateSAPRecommendations()
+    }
+  }
+
+  const generateSAPRecommendations = async () => {
+    if (!formData.companyName || !formData.industry) return
+
+    setIsLoadingRecommendations(true)
+    try {
+      const response = await fetch("/api/sap-recommendations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          companyName: formData.companyName,
+          industry: formData.industry,
+          size: formData.size,
+          challenges: formData.challenges,
+          currentSystems: formData.currentSystems,
+          budget: formData.budget,
+        }),
+      })
+
+      if (response.ok) {
+        const recommendations = await response.json()
+        setSuggestedModules(recommendations.modules || [])
       }
+    } catch (err) {
+      console.error("Failed to generate SAP recommendations:", err)
+    } finally {
+      setIsLoadingRecommendations(false)
     }
   }
 
@@ -237,6 +287,75 @@ export default function NewAccount(): ReactElement {
       },
     }))
     setValidationErrors((prev) => ({ ...prev, [`${type}${field.charAt(0).toUpperCase() + field.slice(1)}`]: "" }))
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, category: string) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    setIsUploading(true)
+    setError("")
+
+    try {
+      for (const file of Array.from(files)) {
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`File ${file.name} is too large. Maximum size is 10MB.`)
+        }
+
+        // Create FormData for file upload
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("category", category)
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`)
+        }
+
+        const uploadResult = await response.json()
+
+        // Add to uploaded files list
+        const newFile: UploadedFile = {
+          id: uploadResult.id || Date.now().toString(),
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          category,
+          url: uploadResult.url,
+          uploadedAt: new Date(),
+        }
+
+        setUploadedFiles((prev) => [...prev, newFile])
+      }
+
+      // Regenerate recommendations with file context
+      if (uploadedFiles.length > 0) {
+        await generateSAPRecommendations()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload files")
+    } finally {
+      setIsUploading(false)
+      // Reset file input
+      event.target.value = ""
+    }
+  }
+
+  const removeFile = (fileId: string) => {
+    setUploadedFiles((prev) => prev.filter((file) => file.id !== fileId))
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes"
+    const k = 1024
+    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
   const addTag = () => {
@@ -306,6 +425,7 @@ export default function NewAccount(): ReactElement {
           secondary_contact: formData.secondaryContact,
           notes: formData.notes,
           tags: formData.tags,
+          uploaded_files: uploadedFiles,
         }),
       })
 
@@ -335,6 +455,7 @@ export default function NewAccount(): ReactElement {
         notes: "",
         tags: [],
       })
+      setUploadedFiles([])
       setSuggestedModules([])
       setAnalysisResult("")
       setCurrentStep(0)
@@ -362,7 +483,7 @@ export default function NewAccount(): ReactElement {
         },
         body: JSON.stringify({
           companyId: createdCompanyId,
-          analysisData: formData,
+          analysisData: { ...formData, uploadedFiles },
         }),
       })
 
@@ -401,7 +522,7 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
         <SidebarTrigger />
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-gray-900">New Account Intake</h1>
-          <p className="text-gray-600">Comprehensive prospect information capture</p>
+          <p className="text-gray-600">Comprehensive prospect information capture with document upload</p>
         </div>
         <div className="text-right">
           <div className="text-sm text-gray-500 mb-1">Form Progress</div>
@@ -631,7 +752,7 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                   </div>
                 )}
 
-                {/* Step 2: Contacts */}
+                {/* Step 2: Contacts & Files */}
                 {currentStep === 2 && (
                   <div className="space-y-6">
                     <div>
@@ -750,6 +871,87 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                         </div>
                       </div>
                     </div>
+
+                    <Separator />
+
+                    {/* File Upload Section */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Upload className="h-5 w-5" />
+                        Document Upload
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {fileTypes.map((fileType) => (
+                          <div key={fileType.value} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              {React.createElement(fileType.icon, { className: "h-4 w-4 text-gray-600" })}
+                              <Label className="text-sm font-medium">{fileType.label}</Label>
+                            </div>
+                            <Input
+                              type="file"
+                              multiple
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
+                              onChange={(e) => handleFileUpload(e, fileType.value)}
+                              disabled={isUploading}
+                              className="text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Uploaded Files List */}
+                      {uploadedFiles.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Uploaded Files ({uploadedFiles.length})</h4>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {uploadedFiles.map((file) => (
+                              <div
+                                key={file.id}
+                                className="flex items-center justify-between p-2 bg-gray-50 rounded border"
+                              >
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium truncate">{file.name}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {formatFileSize(file.size)} • {file.category}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {file.url && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(file.url, "_blank")}
+                                    >
+                                      <Download className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeFile(file.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {isUploading && (
+                        <div className="mt-4 flex items-center gap-2 text-sm text-blue-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading files...
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -828,29 +1030,49 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* SAP Module Suggestions */}
-          {suggestedModules.length > 0 && (
+          {/* AI-Powered SAP Module Recommendations */}
+          {(suggestedModules.length > 0 || isLoadingRecommendations) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-green-700 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Suggested SAP Modules
+                  <Bot className="h-5 w-5" />
+                  AI-Powered SAP Recommendations
+                  {isLoadingRecommendations && <Loader2 className="h-4 w-4 animate-spin" />}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {suggestedModules.map((module) => (
-                    <div key={module.id} className="p-3 border border-green-200 rounded-lg bg-green-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge className="bg-green-100 text-green-800">{module.product_name}</Badge>
-                        <span className="text-xs text-green-600">{module.product_category}</span>
-                      </div>
-                      <p className="text-sm text-gray-700">{module.description}</p>
+                {isLoadingRecommendations ? (
+                  <div className="space-y-3">
+                    <div className="animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </div>
-                  ))}
-                </div>
+                    <div className="animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {suggestedModules.map((module, index) => (
+                      <div key={index} className="p-3 border border-green-200 rounded-lg bg-green-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge className="bg-green-100 text-green-800">{module.product_name}</Badge>
+                          {module.confidence_score && (
+                            <span className="text-xs text-green-600">{module.confidence_score}% match</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2">{module.description}</p>
+                        {module.reasoning && (
+                          <p className="text-xs text-green-600 italic">AI Reasoning: {module.reasoning}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <p className="text-sm text-gray-600 mt-3">
-                  Based on industry: <strong>{formData.industry}</strong>
+                  Powered by OpenAI • Based on: <strong>{formData.industry}</strong>
+                  {uploadedFiles.length > 0 && ` • ${uploadedFiles.length} uploaded documents`}
                 </p>
               </CardContent>
             </Card>
@@ -896,6 +1118,12 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                   <div className="flex justify-between">
                     <span className="text-gray-600">Contact:</span>
                     <span className="font-medium">{formData.primaryContact.name}</span>
+                  </div>
+                )}
+                {uploadedFiles.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Files:</span>
+                    <Badge variant="outline">{uploadedFiles.length} uploaded</Badge>
                   </div>
                 )}
               </div>

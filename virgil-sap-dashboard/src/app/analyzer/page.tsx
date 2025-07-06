@@ -23,9 +23,25 @@ import {
   History,
   Eye,
   Calendar,
+  Building,
+  MapPin,
+  Globe,
+  FileText,
+  BarChart3,
+  Shield,
+  Zap,
+  Settings,
+  Cpu,
+  Lock,
+  Gauge,
+  LineChart,
+  PieChart,
+  Activity,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
+import { Separator } from "@/components/ui/separator"
 
 interface Company {
   id: number
@@ -33,9 +49,17 @@ interface Company {
   industry: string
   company_size: string
   region: string
+  website?: string
   business_challenges?: string
-  annual_revenue?: number
-  employee_count?: number
+  current_systems?: string
+  budget?: string
+  timeline?: string
+  priority?: string
+  primary_contact?: any
+  secondary_contact?: any
+  notes?: string
+  tags?: string[]
+  created_at?: string
 }
 
 interface AIAnalysis {
@@ -53,9 +77,32 @@ interface AIAnalysis {
     estimatedCostMax: number
     keyBenefits: string[]
     implementationComplexity: string
+    technicalRequirements?: string[]
+    businessImpact?: string
+    riskMitigation?: string[]
+    successMetrics?: string[]
   }[]
   nextSteps: string[]
   riskFactors: string[]
+  implementationRoadmap?: {
+    phase: string
+    duration: string
+    activities: string[]
+    deliverables: string[]
+    resources: string[]
+  }[]
+  businessCase?: {
+    totalInvestment: number
+    projectedSavings: number
+    paybackPeriod: string
+    netPresentValue: number
+    riskAdjustedROI: number
+  }
+  competitiveAnalysis?: {
+    sapAdvantages: string[]
+    competitorComparison: string[]
+    differentiators: string[]
+  }
 }
 
 interface AnalysisResponse {
@@ -68,12 +115,14 @@ interface AnalysisResponse {
 interface StoredAnalysis {
   id: number
   company_id: number
-  company_name: string
-  industry: string
-  company_size: string
+  company_name?: string
+  industry?: string
+  company_size?: string
   analysis_results: AIAnalysis
   confidence_score: number
   created_at: string
+  analysis_type?: string
+  model_version?: string
 }
 
 export default function Analyzer() {
@@ -168,13 +217,15 @@ export default function Analyzer() {
 
       if (response.ok) {
         const data = await response.json()
-        console.log("📊 Analyzer: Previous analyses:", data)
+        console.log("📊 Analyzer: Previous analyses raw data:", data)
 
         if (Array.isArray(data)) {
-          // Validate and clean the data
+          // Enhanced data processing for the new analysis structure
           const validAnalyses = data
             .map((analysis) => {
               let analysisResults = analysis.analysis_results
+
+              // Handle string JSON parsing
               if (typeof analysisResults === "string") {
                 try {
                   analysisResults = JSON.parse(analysisResults)
@@ -184,12 +235,19 @@ export default function Analyzer() {
                 }
               }
 
-              return {
+              // Add company info if missing
+              const processedAnalysis = {
                 ...analysis,
                 analysis_results: analysisResults,
+                company_name: analysis.company_name || selectedCompany?.name || "Unknown Company",
+                industry: analysis.industry || selectedCompany?.industry || "Unknown Industry",
+                company_size: analysis.company_size || selectedCompany?.company_size || "Unknown Size",
               }
+
+              return processedAnalysis
             })
             .filter((analysis) => analysis.analysis_results !== null)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
           setPreviousAnalyses(validAnalyses)
           console.log("📊 Analyzer: Set", validAnalyses.length, "previous analyses")
@@ -216,11 +274,7 @@ export default function Analyzer() {
     try {
       console.log("🤖 Analyzer: Generating AI analysis for company ID:", companyId)
 
-      // Use simple route for testing
-      const apiUrl = useSimpleRoute
-        ? `/api/ai-analysis/company/${companyId}/route-simple`
-        : `/api/ai-analysis/company/${companyId}`
-
+      const apiUrl = `/api/ai-analysis/company/${companyId}`
       console.log("🤖 Analyzer: Using API URL:", apiUrl)
 
       const response = await fetch(apiUrl, {
@@ -232,15 +286,6 @@ export default function Analyzer() {
       })
 
       console.log("🤖 Analyzer: AI Analysis response status:", response.status)
-      console.log("🤖 Analyzer: AI Analysis response headers:", Object.fromEntries(response.headers.entries()))
-
-      // Check if response is HTML (error page)
-      const contentType = response.headers.get("content-type")
-      if (contentType && !contentType.includes("application/json")) {
-        const htmlContent = await response.text()
-        console.error("🤖 Analyzer: Received HTML instead of JSON:", htmlContent.substring(0, 500))
-        throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}`)
-      }
 
       if (!response.ok) {
         let errorData
@@ -261,8 +306,6 @@ export default function Analyzer() {
         data = await response.json()
       } catch (parseError) {
         console.error("🤖 Analyzer: Failed to parse JSON response:", parseError)
-        const responseText = await response.text()
-        console.error("🤖 Analyzer: Raw response:", responseText.substring(0, 500))
         throw new Error("Failed to parse server response as JSON")
       }
 
@@ -344,6 +387,15 @@ export default function Analyzer() {
     }).format(amount)
   }
 
+  const formatLargeCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`
+    } else if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(0)}K`
+    }
+    return formatCurrency(amount)
+  }
+
   return (
     <div className="flex-1 space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -351,7 +403,7 @@ export default function Analyzer() {
           <SidebarTrigger />
           <div>
             <h1 className="text-3xl font-bold text-gray-900">AI-Powered Fit & Benefit Analyzer</h1>
-            <p className="text-gray-600">OpenAI-generated SAP solution recommendations and analysis</p>
+            <p className="text-gray-600">Comprehensive SAP solution analysis with business case development</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -402,7 +454,7 @@ export default function Analyzer() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-purple-600" />
-            Select Company for AI Analysis
+            Select Company for Comprehensive AI Analysis
             {useSimpleRoute && (
               <Badge className="bg-yellow-100 text-yellow-800 ml-2">
                 <Bug className="h-3 w-3 mr-1" />
@@ -490,7 +542,7 @@ export default function Analyzer() {
                   ) : (
                     <>
                       <Play className="mr-2 h-4 w-4" />
-                      Generate AI Analysis
+                      Generate Comprehensive Analysis
                     </>
                   )}
                 </Button>
@@ -532,16 +584,15 @@ export default function Analyzer() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {useSimpleRoute ? "Testing Analysis Pipeline" : "AI Analysis in Progress"}
+                        Comprehensive AI Analysis in Progress
                       </h3>
                       <p className="text-gray-600 mb-4">
-                        {useSimpleRoute
-                          ? `Testing the analysis pipeline for ${selectedCompany?.name}...`
-                          : `OpenAI is analyzing ${selectedCompany?.name} to generate comprehensive SAP fit assessment...`}
+                        OpenAI is performing deep analysis of {selectedCompany?.name} including business case
+                        development, competitive analysis, and implementation roadmap...
                       </p>
                       <div className="flex items-center justify-center gap-2 text-sm text-purple-600">
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>{useSimpleRoute ? "Running tests..." : "This may take 10-30 seconds"}</span>
+                        <span>This may take 30-60 seconds for comprehensive analysis</span>
                       </div>
                     </div>
                   </div>
@@ -556,13 +607,10 @@ export default function Analyzer() {
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertCircle className="h-5 w-5 text-red-600" />
-                      <h3 className="font-semibold text-red-800">
-                        {useSimpleRoute ? "Test Analysis Failed" : "AI Analysis Failed"}
-                      </h3>
+                      <h3 className="font-semibold text-red-800">AI Analysis Failed</h3>
                     </div>
                     <p className="text-red-700 mb-4">{analysisError}</p>
 
-                    {/* Helpful debugging info */}
                     <div className="bg-red-100 p-3 rounded text-sm text-red-800 mb-4">
                       <p>
                         <strong>Troubleshooting steps:</strong>
@@ -572,7 +620,6 @@ export default function Analyzer() {
                         <li>Verify your OpenAI API key is valid and has credits</li>
                         <li>Check browser console for detailed error logs</li>
                         <li>Ensure DATABASE_URL is properly configured</li>
-                        <li>Try the simple test mode first to isolate issues</li>
                       </ul>
                     </div>
 
@@ -586,39 +633,30 @@ export default function Analyzer() {
                         <RefreshCw className="mr-2 h-3 w-3" />
                         Retry Analysis
                       </Button>
-                      <Button
-                        onClick={() => setUseSimpleRoute(!useSimpleRoute)}
-                        variant="outline"
-                        size="sm"
-                        className="bg-transparent"
-                      >
-                        <Bug className="mr-2 h-3 w-3" />
-                        Switch to {useSimpleRoute ? "Full AI" : "Test Mode"}
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* AI Analysis Results */}
+            {/* Comprehensive AI Analysis Results */}
             {selectedCompany && analysisData && !analyzing && (
               <>
-                {/* Overall Fit Assessment */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="h-5 w-5 text-blue-600" />
-                      {useSimpleRoute ? "Test" : "AI-Generated"} SAP Fit Assessment - {selectedCompany.name}
-                      <Badge className="bg-purple-100 text-purple-800 ml-2">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        {useSimpleRoute ? "Test Mode" : "AI Powered"}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div>
+                {/* Company Overview & Fit Assessment */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-blue-600" />
+                        SAP Fit Assessment - {selectedCompany.name}
+                        <Badge className="bg-purple-100 text-purple-800 ml-2">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          AI Powered
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
                         <div className="flex items-center gap-4 mb-4">
                           <div className="flex items-center gap-2">
                             <CheckCircle className="h-6 w-6 text-green-600" />
@@ -628,39 +666,140 @@ export default function Analyzer() {
                             {analysisData.fitScore}% Match
                           </Badge>
                         </div>
-                        <div className="space-y-2">
-                          <p>
-                            <strong>Industry:</strong> {selectedCompany.industry}
-                          </p>
-                          <p>
-                            <strong>Company Size:</strong> {selectedCompany.company_size}
-                          </p>
-                          <p>
-                            <strong>Region:</strong> {selectedCompany.region}
-                          </p>
-                          {selectedCompany.employee_count && (
-                            <p>
-                              <strong>Employees:</strong> {selectedCompany.employee_count.toLocaleString()}
-                            </p>
-                          )}
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Building className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm">
+                                <strong>Industry:</strong> {selectedCompany.industry}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm">
+                                <strong>Size:</strong> {selectedCompany.company_size}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm">
+                                <strong>Region:</strong> {selectedCompany.region}
+                              </span>
+                            </div>
+                            {selectedCompany.website && (
+                              <div className="flex items-center gap-2">
+                                <Globe className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm">
+                                  <strong>Website:</strong>{" "}
+                                  <a
+                                    href={selectedCompany.website}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    {selectedCompany.website}
+                                  </a>
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            {selectedCompany.budget && (
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm">
+                                  <strong>Budget:</strong> {selectedCompany.budget}
+                                </span>
+                              </div>
+                            )}
+                            {selectedCompany.timeline && (
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm">
+                                  <strong>Timeline:</strong> {selectedCompany.timeline}
+                                </span>
+                              </div>
+                            )}
+                            {selectedCompany.priority && (
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm">
+                                  <strong>Priority:</strong> {selectedCompany.priority}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <Progress value={analysisData.fitScore} className="w-full" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Key Success Factors</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {analysisData.keySuccessFactors.map((factor, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
+                            <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                            {factor}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Business Case Overview */}
+                {analysisData.businessCase && (
+                  <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-blue-600" />
+                        Business Case Summary
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 md:grid-cols-5">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {formatLargeCurrency(analysisData.businessCase.totalInvestment)}
+                          </div>
+                          <div className="text-sm text-gray-600">Total Investment</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-600">
+                            {formatLargeCurrency(analysisData.businessCase.projectedSavings)}
+                          </div>
+                          <div className="text-sm text-gray-600">Projected Savings</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-purple-600">
+                            {analysisData.businessCase.paybackPeriod}
+                          </div>
+                          <div className="text-sm text-gray-600">Payback Period</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-orange-600">
+                            {formatLargeCurrency(analysisData.businessCase.netPresentValue)}
+                          </div>
+                          <div className="text-sm text-gray-600">Net Present Value</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-red-600">
+                            {analysisData.businessCase.riskAdjustedROI}%
+                          </div>
+                          <div className="text-sm text-gray-600">Risk-Adjusted ROI</div>
                         </div>
                       </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">
-                          {useSimpleRoute ? "Test" : "AI-Identified"} Success Factors
-                        </h4>
-                        <ul className="space-y-1">
-                          {analysisData.keySuccessFactors.map((factor, index) => (
-                            <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
-                              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                              {factor}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Business Challenges */}
                 <Card>
@@ -685,101 +824,314 @@ export default function Analyzer() {
                   </CardContent>
                 </Card>
 
-                {/* Recommended Solutions */}
-                <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <Sparkles className="h-6 w-6 text-purple-600" />
-                    {useSimpleRoute ? "Test" : "AI-Recommended"} SAP Solutions
-                  </h2>
-                  {analysisData.recommendedSolutions
-                    .sort((a, b) => a.priority - b.priority)
-                    .map((solution, index) => (
-                      <Card key={solution.module}>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <CardTitle className="text-xl text-gray-900">SAP {solution.module}</CardTitle>
-                              <Badge className={getFitColor(solution.fit)}>{solution.fit} Fit</Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Priority {solution.priority}
-                              </Badge>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm text-gray-500">Complexity</div>
-                              <div className={`font-medium ${getComplexityColor(solution.implementationComplexity)}`}>
-                                {solution.implementationComplexity}
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid gap-6 md:grid-cols-3">
-                            <div className="space-y-4">
-                              <div className="flex items-center gap-2">
-                                <TrendingUp className="h-5 w-5 text-green-600" />
-                                <div>
-                                  <p className="text-sm text-gray-600">
-                                    {useSimpleRoute ? "Test" : "AI-Estimated"} ROI
-                                  </p>
-                                  <p className="text-lg font-semibold text-green-600">{solution.estimatedROI}%</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-5 w-5 text-blue-600" />
-                                <div>
-                                  <p className="text-sm text-gray-600">Time to Value</p>
-                                  <p className="text-lg font-semibold text-blue-600">{solution.timeToValue}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-5 w-5 text-purple-600" />
-                                <div>
-                                  <p className="text-sm text-gray-600">Investment Range</p>
-                                  <p className="text-lg font-semibold text-purple-600">
-                                    {formatCurrency(solution.estimatedCostMin)} -{" "}
-                                    {formatCurrency(solution.estimatedCostMax)}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
+                {/* Recommended Solutions – Enhanced */}
+<div className="space-y-4">
+  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+    <Sparkles className="h-6 w-6 text-purple-600" />
+    AI-Recommended SAP Solutions
+  </h2>
 
-                            <div className="md:col-span-2">
-                              <h4 className="font-semibold text-gray-900 mb-3">
-                                {useSimpleRoute ? "Test" : "AI-Identified"} Key Benefits
-                              </h4>
-                              <div className="grid gap-2 sm:grid-cols-2">
-                                {solution.keyBenefits.map((benefit, benefitIndex) => (
-                                  <div key={benefitIndex} className="flex items-start gap-2">
-                                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                                    <span className="text-sm text-gray-600">{benefit}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 pt-4 border-t border-gray-200 flex gap-2">
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                              Generate Proposal
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              Add to Pipeline
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              Schedule Demo
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+  {Array.isArray(analysisData.recommendedSolutions) ? (
+    analysisData.recommendedSolutions
+      .sort((a, b) => a.priority - b.priority)
+      .map((solution, index) => (
+        <Card key={solution.module} className="overflow-hidden">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-xl text-gray-900">
+                  SAP {solution.module}
+                </CardTitle>
+                <Badge className={getFitColor(solution.fit)}>
+                  {solution.fit} Fit
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  Priority {solution.priority}
+                </Badge>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-500">Complexity</div>
+                <div
+                  className={`font-medium ${getComplexityColor(
+                    solution.implementationComplexity
+                  )}`}
+                >
+                  {solution.implementationComplexity}
                 </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid gap-6 lg:grid-cols-4">
+              {/* Key Metrics */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Estimated ROI</p>
+                    <p className="text-lg font-semibold text-green-600">
+                      {solution.estimatedROI}%
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Time to Value</p>
+                    <p className="text-lg font-semibold text-blue-600">
+                      {solution.timeToValue}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Investment Range</p>
+                    <p className="text-lg font-semibold text-purple-600">
+                      {formatCurrency(solution.estimatedCostMin)} –{" "}
+                      {formatCurrency(solution.estimatedCostMax)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Benefits */}
+              <div className="lg:col-span-2">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-yellow-600" />
+                  Key Benefits
+                </h4>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {solution.keyBenefits.map((benefit, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-2 text-sm text-gray-600"
+                    >
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      {benefit}
+                    </div>
+                  ))}
+                </div>
+
+                {solution.businessImpact && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <h5 className="font-medium text-blue-900 mb-1 flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      Business Impact
+                    </h5>
+                    <p className="text-sm text-blue-800">
+                      {solution.businessImpact}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Technical Requirements & Success Metrics */}
+              <div className="space-y-4">
+                {solution.technicalRequirements && (
+                  <div>
+                    <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-gray-600" />
+                      Technical Requirements
+                    </h5>
+                    <ul className="space-y-1">
+                      {solution.technicalRequirements.map((req, i) => (
+                        <li
+                          key={i}
+                          className="text-xs text-gray-600 flex items-start gap-1"
+                        >
+                          <Cpu className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          {req}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {solution.successMetrics && (
+                  <div>
+                    <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-gray-600" />
+                      Success Metrics
+                    </h5>
+                    <ul className="space-y-1">
+                      {solution.successMetrics.map((metric, i) => (
+                        <li
+                          key={i}
+                          className="text-xs text-gray-600 flex items-start gap-1"
+                        >
+                          <LineChart className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          {metric}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Risk Mitigation */}
+            {solution.riskMitigation && (
+              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <h5 className="font-medium text-yellow-900 mb-2 flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Risk Mitigation Strategies
+                </h5>
+                <div className="grid gap-1 sm:grid-cols-2">
+                  {solution.riskMitigation.map((risk, i) => (
+                    <div
+                      key={i}
+                      className="text-sm text-yellow-800 flex items-start gap-1"
+                    >
+                      <Lock className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      {risk}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Separator className="my-4" />
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                Generate Proposal
+              </Button>
+              <Button size="sm" variant="outline">
+                Add to Pipeline
+              </Button>
+              <Button size="sm" variant="outline">
+                Schedule Demo
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))
+  ) : (
+    <p className="text-gray-500 italic">No recommended solutions available.</p>
+  )}
+</div>
+
+
+                {/* Implementation Roadmap */}
+                {analysisData.implementationRoadmap && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-blue-600" />
+                        Implementation Roadmap
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {analysisData.implementationRoadmap.map((phase, index) => (
+                          <div key={index} className="border rounded-lg p-4">
+                            <div className="flex items-center gap-3 mb-3">
+                              <Badge variant="outline" className="text-xs">
+                                Phase {index + 1}
+                              </Badge>
+                              <h4 className="font-semibold text-gray-900">{phase.phase}</h4>
+                              <Badge className="bg-blue-100 text-blue-800">{phase.duration}</Badge>
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <div>
+                                <h5 className="font-medium text-gray-700 mb-2">Activities</h5>
+                                <ul className="space-y-1">
+                                  {phase.activities.map((activity, actIndex) => (
+                                    <li key={actIndex} className="text-sm text-gray-600 flex items-start gap-1">
+                                      <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-green-600" />
+                                      {activity}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <h5 className="font-medium text-gray-700 mb-2">Deliverables</h5>
+                                <ul className="space-y-1">
+                                  {phase.deliverables.map((deliverable, delIndex) => (
+                                    <li key={delIndex} className="text-sm text-gray-600 flex items-start gap-1">
+                                      <FileText className="h-3 w-3 mt-0.5 flex-shrink-0 text-blue-600" />
+                                      {deliverable}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <h5 className="font-medium text-gray-700 mb-2">Resources</h5>
+                                <ul className="space-y-1">
+                                  {phase.resources.map((resource, resIndex) => (
+                                    <li key={resIndex} className="text-sm text-gray-600 flex items-start gap-1">
+                                      <Users className="h-3 w-3 mt-0.5 flex-shrink-0 text-purple-600" />
+                                      {resource}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Competitive Analysis */}
+                {analysisData.competitiveAnalysis && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-green-600" />
+                        Competitive Analysis
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-6 md:grid-cols-3">
+                        <div>
+                          <h4 className="font-semibold text-green-900 mb-3">SAP Advantages</h4>
+                          <ul className="space-y-2">
+                            {analysisData.competitiveAnalysis.sapAdvantages.map((advantage, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-green-800">
+                                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                {advantage}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-blue-900 mb-3">Competitor Comparison</h4>
+                          <ul className="space-y-2">
+                            {analysisData.competitiveAnalysis.competitorComparison.map((comparison, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-blue-800">
+                                <BarChart3 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                {comparison}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-purple-900 mb-3">Key Differentiators</h4>
+                          <ul className="space-y-2">
+                            {analysisData.competitiveAnalysis.differentiators.map((differentiator, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-purple-800">
+                                <Sparkles className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                                {differentiator}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Risk Factors */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <AlertCircle className="h-5 w-5 text-red-600" />
-                      {useSimpleRoute ? "Test" : "AI-Identified"} Risk Factors
+                      Risk Factors & Mitigation
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -803,9 +1155,7 @@ export default function Analyzer() {
                     <div className="flex items-start gap-4">
                       <Users className="h-8 w-8 text-blue-600 mt-1" />
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-2">
-                          {useSimpleRoute ? "Test" : "AI-Recommended"} Next Steps
-                        </h3>
+                        <h3 className="font-semibold text-blue-900 mb-2">Recommended Next Steps</h3>
                         <ul className="space-y-2 mb-4">
                           {analysisData.nextSteps.map((step, index) => (
                             <li key={index} className="flex items-start gap-2 text-blue-800">
@@ -818,6 +1168,9 @@ export default function Analyzer() {
                           <Button className="bg-blue-600 hover:bg-blue-700">Create Presentation Deck</Button>
                           <Button variant="outline" className="border-blue-300 text-blue-700 bg-transparent">
                             Schedule Executive Briefing
+                          </Button>
+                          <Button variant="outline" className="border-blue-300 text-blue-700 bg-transparent">
+                            Generate Proposal
                           </Button>
                         </div>
                       </div>
@@ -832,20 +1185,17 @@ export default function Analyzer() {
               <Card>
                 <CardContent className="text-center py-12">
                   <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready to Generate AI Analysis</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready to Generate Comprehensive Analysis</h3>
                   <p className="text-gray-600 mb-4">
-                    Click "Generate AI Analysis" to create{" "}
-                    {useSimpleRoute
-                      ? "test analysis"
-                      : "AI-powered SAP fit analysis and solution recommendations using OpenAI"}{" "}
-                    for {selectedCompany.name}.
+                    Click "Generate Comprehensive Analysis" to create AI-powered SAP fit analysis with business case,
+                    implementation roadmap, and competitive analysis for {selectedCompany.name}.
                   </p>
                   <Button
                     onClick={() => generateAnalysis(selectedCompanyId)}
                     className="bg-purple-600 hover:bg-purple-700"
                   >
                     <Play className="mr-2 h-4 w-4" />
-                    Generate AI Analysis
+                    Generate Comprehensive Analysis
                   </Button>
                 </CardContent>
               </Card>
@@ -890,11 +1240,21 @@ export default function Analyzer() {
                           <CardTitle className="text-lg flex items-center gap-2">
                             <Brain className="h-5 w-5 text-purple-600" />
                             AI Analysis #{analysis.id}
+                            {analysis.analysis_type && (
+                              <Badge variant="outline" className="text-xs">
+                                {analysis.analysis_type}
+                              </Badge>
+                            )}
                           </CardTitle>
                           <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
                             <Calendar className="h-4 w-4" />
                             Generated on {new Date(analysis.created_at).toLocaleDateString()} at{" "}
                             {new Date(analysis.created_at).toLocaleTimeString()}
+                            {analysis.model_version && (
+                              <Badge variant="outline" className="text-xs ml-2">
+                                {analysis.model_version}
+                              </Badge>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -933,6 +1293,33 @@ export default function Analyzer() {
                         </div>
                       </div>
 
+                      {/* Enhanced preview for comprehensive analysis */}
+                      {analysis.analysis_results?.businessCase && (
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <h5 className="font-medium text-blue-900 mb-2">Business Case Summary</h5>
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <span className="text-blue-700">Investment: </span>
+                              <span className="font-medium">
+                                {formatLargeCurrency(analysis.analysis_results.businessCase.totalInvestment)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-blue-700">Savings: </span>
+                              <span className="font-medium">
+                                {formatLargeCurrency(analysis.analysis_results.businessCase.projectedSavings)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-blue-700">Payback: </span>
+                              <span className="font-medium">
+                                {analysis.analysis_results.businessCase.paybackPeriod}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         <Button
                           onClick={() => loadPreviousAnalysis(analysis)}
@@ -940,12 +1327,18 @@ export default function Analyzer() {
                           className="bg-blue-600 hover:bg-blue-700"
                         >
                           <Eye className="mr-2 h-4 w-4" />
-                          View Analysis
+                          View Full Analysis
                         </Button>
                         <Button size="sm" variant="outline">
                           <Download className="mr-2 h-4 w-4" />
                           Export Report
                         </Button>
+                        {analysis.analysis_results?.businessCase && (
+                          <Button size="sm" variant="outline">
+                            <PieChart className="mr-2 h-4 w-4" />
+                            Business Case
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -961,13 +1354,10 @@ export default function Analyzer() {
         <Card>
           <CardContent className="text-center py-12">
             <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Company for AI Analysis</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Company for Comprehensive Analysis</h3>
             <p className="text-gray-600">
-              Choose a company from the dropdown above to generate{" "}
-              {useSimpleRoute
-                ? "test analysis"
-                : "AI-powered SAP fit analysis and solution recommendations using OpenAI"}
-              .
+              Choose a company from the dropdown above to generate comprehensive AI-powered SAP analysis with business
+              case development, implementation roadmap, and competitive analysis.
             </p>
           </CardContent>
         </Card>
