@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,22 +12,28 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus } from "lucide-react"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus } from "lucide-react";
 
-const stages = ["Discovery", "Proposal", "Demo", "Negotiation", "Closed-Won"]
+const stages = ["Discovery", "Proposal", "Demo", "Negotiation", "Closed-Won"];
 
 interface AddDealDialogProps {
-  onDealCreated: () => void
+  onDealCreated: () => void;
 }
 
 export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     deal_name: "",
     company_name: "",
@@ -35,11 +41,11 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
     deal_value: "",
     stage: "Discovery",
     notes: "",
-  })
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
       const response = await fetch("/api/deals", {
@@ -51,10 +57,13 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
           ...formData,
           deal_value: Number.parseFloat(formData.deal_value) || 0,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to create deal")
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || errorData.details || "Failed to create deal"
+        );
       }
 
       // Reset form
@@ -65,17 +74,21 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
         deal_value: "",
         stage: "Discovery",
         notes: "",
-      })
+      });
 
-      setOpen(false)
-      onDealCreated()
+      setOpen(false);
+      onDealCreated();
     } catch (error) {
-      console.error("Error creating deal:", error)
-      alert("Failed to create deal. Please try again.")
+      console.error("Error creating deal:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to create deal. Please try again."
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -88,7 +101,9 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Deal</DialogTitle>
-          <DialogDescription>Create a new deal in your pipeline. Fill out the details below.</DialogDescription>
+          <DialogDescription>
+            Create a new deal in your pipeline. Fill out the details below.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -99,7 +114,9 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
               <Input
                 id="deal_name"
                 value={formData.deal_name}
-                onChange={(e) => setFormData({ ...formData, deal_name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, deal_name: e.target.value })
+                }
                 className="col-span-3"
                 required
               />
@@ -111,7 +128,9 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
               <Input
                 id="company_name"
                 value={formData.company_name}
-                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, company_name: e.target.value })
+                }
                 className="col-span-3"
                 required
               />
@@ -123,7 +142,9 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
               <Input
                 id="ae_name"
                 value={formData.ae_name}
-                onChange={(e) => setFormData({ ...formData, ae_name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, ae_name: e.target.value })
+                }
                 className="col-span-3"
                 required
               />
@@ -136,7 +157,9 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
                 id="deal_value"
                 type="number"
                 value={formData.deal_value}
-                onChange={(e) => setFormData({ ...formData, deal_value: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, deal_value: e.target.value })
+                }
                 className="col-span-3"
                 placeholder="0"
               />
@@ -145,7 +168,12 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
               <Label htmlFor="stage" className="text-right">
                 Stage
               </Label>
-              <Select value={formData.stage} onValueChange={(value) => setFormData({ ...formData, stage: value })}>
+              <Select
+                value={formData.stage}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, stage: value })
+                }
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue />
                 </SelectTrigger>
@@ -165,7 +193,9 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
               <Textarea
                 id="notes"
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 className="col-span-3"
                 placeholder="Optional notes about this deal..."
               />
@@ -179,5 +209,5 @@ export function AddDealDialog({ onDealCreated }: AddDealDialogProps) {
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
