@@ -385,9 +385,32 @@ export default function Analyzer() {
         }
 
         console.error("🤖 Analyzer: Error response:", errorData);
-        throw new Error(
-          errorData.error || errorData.details || `HTTP ${response.status}`
-        );
+
+        // Create a more detailed error message
+        let errorMessage =
+          errorData?.error || errorData?.details || `HTTP ${response.status}`;
+
+        // Add debugging information if available
+        if (errorData?.businessCase) {
+          errorMessage += `\n\nBusiness Case Data: ${JSON.stringify(
+            errorData.businessCase,
+            null,
+            2
+          )}`;
+        }
+        if (errorData?.raw) {
+          errorMessage += `\n\nRaw AI Output: ${errorData.raw.substring(
+            0,
+            500
+          )}...`;
+        }
+        if (errorData?.analysis) {
+          errorMessage += `\n\nAnalysis Object Keys: ${Object.keys(
+            errorData.analysis
+          ).join(", ")}`;
+        }
+
+        throw new Error(errorMessage);
       }
 
       let data: AnalysisResponse;
@@ -800,9 +823,6 @@ export default function Analyzer() {
                               {analysisData.overallFit} Fit
                             </span>
                           </div>
-                          <Badge className="bg-emerald-100 text-emerald-800 text-lg px-3 py-1">
-                            {analysisData.fitScore}% Match
-                          </Badge>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
@@ -1072,13 +1092,6 @@ export default function Analyzer() {
                           regional cost factor. Annual savings calculated from
                           operational efficiency (25-35%), process automation
                           (20-30%), compliance savings (10-20%)
-                        </p>
-                        <p>
-                          <strong>Fit Score Algorithm:</strong> Industry
-                          alignment (25 pts), company size suitability (20 pts),
-                          business challenges alignment (20 pts), systems
-                          complexity (15 pts), budget/timeline feasibility (10
-                          pts), regional factors (5 pts), sales momentum (5 pts)
                         </p>
                       </div>
                     </div>
@@ -1551,13 +1564,6 @@ export default function Analyzer() {
                           regional cost factor. Annual savings calculated from
                           operational efficiency (25-35%), process automation
                           (20-30%), compliance savings (10-20%)
-                        </p>
-                        <p>
-                          <strong>Fit Score Algorithm:</strong> Industry
-                          alignment (25 pts), company size suitability (20 pts),
-                          business challenges alignment (20 pts), systems
-                          complexity (15 pts), budget/timeline feasibility (10
-                          pts), regional factors (5 pts), sales momentum (5 pts)
                         </p>
                       </div>
                     </div>

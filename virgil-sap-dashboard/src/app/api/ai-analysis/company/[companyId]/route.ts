@@ -150,7 +150,9 @@ Generate ONLY the recommendedSolutions array for this company. For each SAP modu
 - businessImpact (string)
 - riskMitigation (array)
 - successMetrics (array)
-- moduleAnalysisContext (5+ sentences, data-driven)
+- moduleAnalysisContext (MUST be 300+ characters, 3+ paragraphs with detailed analysis covering: strategic fit, implementation considerations, competitive advantages, risk factors, and expected outcomes. Reference specific company data, industry context, and business challenges. Format with clear paragraph breaks using double line breaks.)
+
+All numeric projections (estimatedROI, estimatedCostMin, estimatedCostMax, etc.) must be uniquely calculated for this company, using the provided company profile, uploaded files, and deal pipeline data. Do NOT use default, placeholder, or repeated values. Each number must be justified by the data and context provided above.
 
 Do NOT include a module unless you can provide ALL required fields with real, nonzero, non-null values and detailed justifications. Do NOT include any projections as null, zero, or placeholder. If you cannot estimate a value, use industry logic and the provided data to make a realistic projection.
 
@@ -212,7 +214,7 @@ ${sapProducts
       model: openai("gpt-4o"),
       prompt: solutionsPrompt,
       temperature: 0.2,
-      maxTokens: 2000,
+      maxTokens: 12000,
     });
     // Clean the response text to remove any markdown formatting
     let solutionsText = solutionsTextRaw.trim();
@@ -273,7 +275,7 @@ ${sapProducts
       if (
         !sol.moduleAnalysisContext ||
         typeof sol.moduleAnalysisContext !== "string" ||
-        sol.moduleAnalysisContext.length < 100
+        sol.moduleAnalysisContext.length < 300
       )
         incomplete = true;
     }
@@ -288,32 +290,203 @@ ${sapProducts
       );
     }
 
-    // STEP 2: Generate the rest of the analysis, referencing the validated solutions
-    const restPrompt = `# CRITICAL: Return ONLY a valid JSON object. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks.
+    // STEP 1: Generate businessChallenges array with a dedicated prompt
+    const businessChallengesPrompt = `# CRITICAL: BUSINESS CHALLENGES (DO NOT OMIT)
+Generate ONLY a businessChallenges array with exactly 1 item. The item must be at least 100 characters and reference company data or industry context. Provide a specific, actionable challenge.
 
-# BUSINESS CASE REQUIREMENTS:
-The businessCase object MUST include ALL of the following fields, with these types:
-- totalInvestment: number (not string, not null, not zero)
-- projectedSavings: number (not string, not null, not zero)
-- netPresentValue: number (not string, not null, not zero)
-- riskAdjustedROI: number (not string, not null, not zero)
-- paybackPeriod: string (not null, not empty, e.g., "3.3 years")
+# Example:
+"businessChallenges": [
+  "The company faces significant integration issues between its legacy ERP and new cloud-based CRM systems, leading to data silos and process inefficiencies across finance and sales departments."
+]
 
-If you cannot estimate a value, use industry logic and the provided data to make a realistic projection. Do NOT return the analysis unless ALL businessCase fields are present and valid.
+COMPANY PROFILE:
+Name: ${company.name}
+Industry: ${company.industry}
+Size: ${company.company_size}
+Region: ${company.region}
+Business Challenges: ${company.business_challenges || "N/A"}
+Current Systems: ${company.current_systems || "N/A"}
+Budget: ${company.budget || "N/A"}
+Timeline: ${company.timeline || "N/A"}
+
+UPLOADED DOCUMENTS AND FILES:
+${
+  uploadedFiles.length > 0
+    ? `The company has provided ${
+        uploadedFiles.length
+      } document(s) for analysis:\n${fileAnalysis
+        .map(
+          (file) =>
+            `- ${file.name} (${file.category}, ${file.type}, ${Math.round(
+              file.size / 1024
+            )}KB)${
+              file.extracted && file.content
+                ? ": Content available for analysis"
+                : ": Content extraction not available"
+            }`
+        )
+        .join("\n")}`
+    : ""
+}
+
+# CRITICAL: Return ONLY a valid JSON array. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks. If you include anything other than a valid JSON array, the analysis will be rejected.`;
+
+    const { text: businessChallengesRaw } = await generateText({
+      model: openai("gpt-4o"),
+      prompt: businessChallengesPrompt,
+      temperature: 0.2,
+      maxTokens: 12000,
+    });
+    let businessChallengesText = businessChallengesRaw.trim();
+    if (businessChallengesText.startsWith("```json")) {
+      businessChallengesText = businessChallengesText
+        .replace(/^```json\s*/, "")
+        .replace(/\s*```$/, "");
+    } else if (businessChallengesText.startsWith("```")) {
+      businessChallengesText = businessChallengesText
+        .replace(/^```\s*/, "")
+        .replace(/\s*```$/, "");
+    }
+    let businessChallenges;
+    try {
+      businessChallenges = JSON.parse(businessChallengesText);
+    } catch (e) {
+      // Try to extract the first valid JSON array from the response
+      const match = businessChallengesText.match(/\[[\s\S]*\]/);
+      if (match) {
+        try {
+          businessChallenges = JSON.parse(match[0]);
+        } catch (e2) {
+          return NextResponse.json(
+            {
+              error:
+                "Failed to parse businessChallenges JSON (after extraction)",
+              details: businessChallengesRaw,
+            },
+            { status: 422 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          {
+            error: "Failed to parse businessChallenges JSON",
+            details: businessChallengesRaw,
+          },
+          { status: 422 }
+        );
+      }
+    }
+    // Validate businessChallenges
+    if (
+      !Array.isArray(businessChallenges) ||
+      businessChallenges.length !== 1 ||
+      !businessChallenges.every(
+        (c: string) => typeof c === "string" && c.length >= 100
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "AI failed to generate 1 business challenge (step 1). Please try again.",
+          businessChallenges,
+          raw: businessChallengesText,
+        },
+        { status: 422 }
+      );
+    }
+
+    // STEP 2: Generate the rest of the analysis with enhanced prompts
+    const restPrompt = `# CRITICAL: IN-DEPTH ANALYSIS REQUIRED
+
+# COMPANY PROFILE ANALYSIS (REQUIRED)
+Generate a comprehensive company profile analysis that MUST:
+- Be at least 800 characters (4+ paragraphs)
+- Include detailed analysis of: 
+  * Industry position and competitive landscape
+  * Operational structure and business model
+  * Technology stack maturity
+  * Growth trajectory and strategic positioning
+- Reference specific company data points
+- Avoid generic statements
+
+# BUSINESS CONTEXT ANALYSIS (REQUIRED)
+Generate a comprehensive business context analysis that MUST:
+- Be at least 800 characters (4+ paragraphs)
+- Cover:
+  * Industry trends and market dynamics
+  * Regulatory environment
+  * Technological disruptions
+  * Strategic opportunities
+- Reference uploaded documents where applicable
+- Include quantitative market data where possible
+
+# AI ANALYSIS METHODOLOGY (REQUIRED)
+Generate a detailed AI analysis methodology that MUST:
+- Be at least 1200 characters (5+ paragraphs)
+- Explain:
+  * Data integration framework
+  * Industry-specific weighting factors
+  * Risk assessment models
+  * Implementation complexity scoring
+  * Validation processes
+- Specify confidence levels for projections
+
+# RISK FACTORS (REQUIRED)
+Generate a detailed riskFactors array with at least 5 items. Each item MUST include:
+- riskCategory (string)
+- riskDescription (5+ sentences)
+- probabilityRating (High/Medium/Low)
+- potentialImpact (High/Medium/Low)
+- mitigationStrategies (array of 3+ strategies)
+- monitoringMetrics (array of metrics)
 
 # CONTEXT
 You have already generated the following recommendedSolutions for this company (do NOT change them):
 ${JSON.stringify(solutions, null, 2)}
 
-Now generate the rest of the analysis (businessCase, financialAnalysis, implementationRoadmap, competitiveAnalysis, riskFactors, executiveSummary, etc.) as before, referencing the modules and projections above. Do NOT repeat or change any numbers in recommendedSolutions. All top-level projections (businessCase, etc.) must be consistent with the module projections above.
+You have already generated the following businessChallenges for this company (do NOT change them):
+${JSON.stringify(businessChallenges, null, 2)}
 
-Return the full analysis as a JSON object, including the provided recommendedSolutions array.`;
+Now generate the rest of the analysis (companyProfileAnalysis, businessContextAnalysis, aiAnalysisMethodology, businessCase, financialAnalysis, implementationRoadmap, competitiveAnalysis, riskFactors, executiveSummary, etc.) as before, referencing the modules, projections, and businessChallenges above. Do NOT repeat or change any numbers in recommendedSolutions or businessChallenges. All top-level projections (businessCase, etc.) must be consistent with the module projections above.
 
+# CRITICAL: You MUST include the businessChallenges array in your response
+The final analysis object MUST include the businessChallenges array exactly as provided above. Do NOT omit this field.
+
+# REQUIRED FIELDS IN FINAL ANALYSIS:
+- businessChallenges (array from step 1 - DO NOT CHANGE)
+- recommendedSolutions (array from step 1 - DO NOT CHANGE)
+- companyProfileAnalysis (string - detailed multi-paragraph)
+- businessContextAnalysis (string - detailed multi-paragraph)
+- aiAnalysisMethodology (string - detailed multi-paragraph)
+- businessCase (object with numeric fields)
+- financialAnalysis (object)
+- implementationRoadmap (array)
+- competitiveAnalysis (object)
+- riskFactors (array)
+- executiveSummary (string)
+
+# BUSINESS CASE REQUIREMENTS (CRITICAL)
+The businessCase object MUST include ALL of the following fields with these EXACT names and types:
+- totalInvestment: number (not string, not null, not zero)
+- projectedSavings: number (not string, not null, not zero)  
+- netPresentValue: number (not string, not null, not zero)
+- riskAdjustedROI: number (not string, not null, not zero)
+- paybackPeriod: string (not null, not empty, e.g., "3.3 years")
+
+Do NOT use field names like "estimatedROI", "timeToValue", "estimatedCostMin", or "estimatedCostMax". Use ONLY the exact field names listed above.
+
+All numeric projections must be uniquely calculated for this company, using the provided company profile, uploaded files, and deal pipeline data. Do NOT use default, placeholder, or repeated values. Each number must be justified by the data and context provided above.
+
+If you cannot estimate a value, use industry logic and the provided data to make a realistic projection. Do NOT return the analysis unless ALL businessCase fields are present and valid.
+
+Return the full analysis as a JSON object, including the provided recommendedSolutions array, businessChallenges array, companyProfileAnalysis, and businessContextAnalysis fields.`;
+
+    // STEP 2: Call OpenAI for the rest of the analysis
     const { text: restTextRaw } = await generateText({
       model: openai("gpt-4o"),
       prompt: restPrompt,
       temperature: 0.2,
-      maxTokens: 4000,
+      maxTokens: 15000,
     });
     // Clean the response text to remove any markdown formatting
     let restText = restTextRaw.trim();
@@ -326,12 +499,29 @@ Return the full analysis as a JSON object, including the provided recommendedSol
     try {
       analysis = JSON.parse(restText);
     } catch (e) {
-      return NextResponse.json(
-        { error: "Failed to parse full analysis JSON", details: restTextRaw },
-        { status: 422 }
-      );
+      // Try to extract the first valid JSON object from the response
+      const match = restText.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          analysis = JSON.parse(match[0]);
+        } catch (e2) {
+          return NextResponse.json(
+            {
+              error: "Failed to parse full analysis JSON (after extraction)",
+              details: restTextRaw,
+            },
+            { status: 422 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: "Failed to parse full analysis JSON", details: restTextRaw },
+          { status: 422 }
+        );
+      }
     }
-    // Validate businessCase summary fields as before
+
+    // Validate businessCase summary fields
     if (
       !analysis.businessCase ||
       typeof analysis.businessCase.totalInvestment !== "number" ||
@@ -351,9 +541,133 @@ Return the full analysis as a JSON object, including the provided recommendedSol
           error:
             "AI failed to generate complete business case projections. Please try again.",
           analysis,
+          businessCase: analysis.businessCase,
+          raw: restTextRaw,
         },
         { status: 422 }
       );
+    }
+
+    // Validate businessChallenges (from step 1)
+    if (
+      !Array.isArray(analysis.businessChallenges) ||
+      analysis.businessChallenges.length !== 1 ||
+      !analysis.businessChallenges.every(
+        (c: string) => typeof c === "string" && c.length >= 100
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "AI failed to generate 1 business challenge (step 2 validation). Please try again.",
+          analysis,
+          expectedBusinessChallenges: businessChallenges,
+          actualBusinessChallenges: analysis.businessChallenges,
+          raw: restTextRaw,
+        },
+        { status: 422 }
+      );
+    }
+
+    // Process and validate text content sections
+    const textSections = [
+      "companyProfileAnalysis",
+      "businessContextAnalysis",
+      "aiAnalysisMethodology",
+    ] as const;
+
+    for (const section of textSections) {
+      let content = analysis[section];
+      if (typeof content === "object" && content !== null) {
+        // Handle nested structure where AI generates {section: {section: "content"}}
+        if (content[section]) {
+          content = content[section];
+        } else if (content.content) {
+          content = content.content;
+        }
+      }
+
+      // Update analysis with processed content
+      analysis[section] = content;
+
+      // Validate content
+      if (!content || typeof content !== "string" || content.length === 0) {
+        return NextResponse.json(
+          {
+            error: `AI failed to generate ${section}. Please try again.`,
+            analysis,
+            [section]: analysis[section],
+          },
+          { status: 422 }
+        );
+      }
+    }
+
+    // Validate specific length requirements
+    const minLengths = {
+      companyProfileAnalysis: 800,
+      businessContextAnalysis: 800,
+      aiAnalysisMethodology: 1200,
+    };
+
+    for (const [section, minLen] of Object.entries(minLengths)) {
+      const content = analysis[section];
+      if (!content || content.length < minLen) {
+        return NextResponse.json(
+          {
+            error: `${section} is too short (min ${minLen} chars required)`,
+            length: content?.length || 0,
+            section,
+            minRequired: minLen,
+          },
+          { status: 422 }
+        );
+      }
+    }
+
+    // Validate riskFactors
+    if (
+      !analysis.riskFactors ||
+      !Array.isArray(analysis.riskFactors) ||
+      analysis.riskFactors.length < 5
+    ) {
+      return NextResponse.json(
+        {
+          error: "Risk factors array must have at least 5 items",
+          riskFactors: analysis.riskFactors,
+          count: analysis.riskFactors?.length || 0,
+        },
+        { status: 422 }
+      );
+    }
+
+    for (const [index, risk] of analysis.riskFactors.entries()) {
+      if (
+        !risk.riskCategory ||
+        !risk.riskDescription ||
+        !["High", "Medium", "Low"].includes(risk.probabilityRating) ||
+        !["High", "Medium", "Low"].includes(risk.potentialImpact) ||
+        !Array.isArray(risk.mitigationStrategies) ||
+        risk.mitigationStrategies.length < 3 ||
+        !Array.isArray(risk.monitoringMetrics) ||
+        risk.monitoringMetrics.length < 1
+      ) {
+        return NextResponse.json(
+          {
+            error: `Risk factor #${index + 1} is incomplete or invalid`,
+            riskFactor: risk,
+            required: {
+              riskCategory: "string",
+              riskDescription: "string (5+ sentences)",
+              probabilityRating: "High/Medium/Low",
+              potentialImpact: "High/Medium/Low",
+              mitigationStrategies: "array (min 3 items)",
+              monitoringMetrics: "array (min 1 item)",
+            },
+          },
+          { status: 422 }
+        );
+      }
     }
 
     // Store the comprehensive analysis in database
@@ -374,7 +688,7 @@ Return the full analysis as a JSON object, including the provided recommendedSol
         },
         analysis_metadata: {
           analysis_date: new Date().toISOString(),
-          prompt_version: "advanced_analytical_v2",
+          prompt_version: "advanced_analytical_v3",
           calculation_methodology: "AI-driven with company-specific data",
           data_completeness: {
             has_business_challenges: !!company.business_challenges,
@@ -455,7 +769,6 @@ function createAdvancedFallbackAnalysis(
   highProbabilityDeals: any[],
   sapProducts: any[]
 ) {
-  // Only provide structure, not numbers
   return {
     fitScore: null,
     overallFit: null,
@@ -481,6 +794,7 @@ function createAdvancedFallbackAnalysis(
     },
     implementationRoadmap: [],
     competitiveAnalysis: {},
+    riskFactors: [],
     businessCase: {
       totalInvestment: null,
       projectedSavings: null,
@@ -492,63 +806,28 @@ function createAdvancedFallbackAnalysis(
 }
 
 function validateAdvancedAnalysis(analysis: any, company: any) {
-  // Only ensure structure, not numbers
   if (!analysis) analysis = {};
-  if (!analysis.financialAnalysis) {
-    analysis.financialAnalysis = {
-      investmentCalculation: {
-        methodology: null,
-        totalInvestment: null,
-      },
-      savingsProjection: {
-        methodology: null,
-        annualSavings: null,
-      },
-      roiAnalysis: {
-        paybackPeriod: null,
-        netPresentValue: null,
-        riskAdjustedROI: null,
-      },
-    };
+
+  const sections = [
+    "companyProfileAnalysis",
+    "businessContextAnalysis",
+    "aiAnalysisMethodology",
+    "riskFactors",
+    "businessCase",
+  ];
+
+  for (const section of sections) {
+    if (!analysis[section]) {
+      analysis[section] = createAdvancedFallbackAnalysis(
+        company,
+        [],
+        0,
+        0,
+        [],
+        []
+      )[section];
+    }
   }
-  if (!analysis.executiveSummary) {
-    analysis.executiveSummary = null;
-  }
-  if (!analysis.keyFindings || !Array.isArray(analysis.keyFindings)) {
-    analysis.keyFindings = [];
-  }
-  if (
-    !analysis.businessChallenges ||
-    !Array.isArray(analysis.businessChallenges)
-  ) {
-    analysis.businessChallenges = [];
-  }
-  if (
-    !analysis.recommendedSolutions ||
-    !Array.isArray(analysis.recommendedSolutions)
-  ) {
-    analysis.recommendedSolutions = [];
-  }
-  if (
-    !analysis.implementationRoadmap ||
-    !Array.isArray(analysis.implementationRoadmap)
-  ) {
-    analysis.implementationRoadmap = [];
-  }
-  if (!analysis.competitiveAnalysis) {
-    analysis.competitiveAnalysis = {};
-  }
-  if (!analysis.riskFactors || !Array.isArray(analysis.riskFactors)) {
-    analysis.riskFactors = [];
-  }
-  if (!analysis.businessCase) {
-    analysis.businessCase = {
-      totalInvestment: null,
-      projectedSavings: null,
-      paybackPeriod: null,
-      netPresentValue: null,
-      riskAdjustedROI: null,
-    };
-  }
+
   return analysis;
 }
