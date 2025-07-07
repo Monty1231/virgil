@@ -3,8 +3,6 @@
 
 @layer theme, base, components, utilities;
 
-
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -105,6 +103,18 @@
   transition: all 0.2s ease-in-out;
 }
 
+/* Enhanced focus states for better accessibility */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Improved button hover states */
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease-in-out;
+}
+
 /* Custom scrollbar for better UX */
 ::-webkit-scrollbar {
   width: 6px;
@@ -121,6 +131,38 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* Dialog and modal improvements */
+[data-radix-dialog-overlay] {
+  backdrop-filter: blur(4px);
+}
+
+[data-radix-dialog-content] {
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Form input improvements */
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* Loading state improvements */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @theme inline {
