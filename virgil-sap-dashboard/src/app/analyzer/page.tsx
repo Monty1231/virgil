@@ -447,28 +447,28 @@ export default function Analyzer() {
   const getFitColor = (fit: string) => {
     switch (fit) {
       case "Excellent":
-        return "bg-green-100 text-green-800";
+        return "bg-emerald-100 text-emerald-800";
       case "High":
-        return "bg-blue-100 text-blue-800";
+        return "bg-indigo-100 text-indigo-800";
       case "Medium":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-amber-100 text-amber-800";
       case "Low":
         return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-slate-100 text-slate-800";
     }
   };
 
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
       case "Low":
-        return "text-green-600";
+        return "text-emerald-600";
       case "Medium":
-        return "text-yellow-600";
+        return "text-amber-600";
       case "High":
         return "text-red-600";
       default:
-        return "text-gray-600";
+        return "text-slate-600";
     }
   };
 
@@ -496,10 +496,10 @@ export default function Analyzer() {
         <div className="flex items-center gap-4">
           <SidebarTrigger />
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-slate-900">
               AI-Powered Fit & Benefit Analyzer
             </h1>
-            <p className="text-gray-600">
+            <p className="text-slate-700">
               Comprehensive SAP solution analysis with business case development
             </p>
           </div>
@@ -514,7 +514,7 @@ export default function Analyzer() {
             <Bug className="mr-2 h-4 w-4" />
             {useSimpleRoute ? "Use Full AI" : "Use Simple Test"}
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-indigo-600 hover:bg-indigo-700">
             <Download className="mr-2 h-4 w-4" />
             Export Report
           </Button>
@@ -523,14 +523,14 @@ export default function Analyzer() {
 
       {/* Debug Info */}
       {debugInfo && (
-        <Card className="bg-gray-50 border-gray-200">
+        <Card className="bg-slate-50 border border-slate-200">
           <CardHeader>
-            <CardTitle className="text-sm text-gray-700">
+            <CardTitle className="text-sm text-slate-700">
               Debug Information
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs text-gray-600 space-y-1">
+            <div className="text-xs text-slate-600 space-y-1">
               <p>
                 <strong>Environment:</strong> OpenAI Key:{" "}
                 {debugInfo.environment?.hasOpenAI ? "✅" : "❌"}, Database:{" "}
@@ -555,10 +555,10 @@ export default function Analyzer() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-purple-600" />
+            <Brain className="h-5 w-5 text-indigo-600" />
             Select Company for Comprehensive AI Analysis
             {useSimpleRoute && (
-              <Badge className="bg-yellow-100 text-yellow-800 ml-2">
+              <Badge className="bg-amber-100 text-amber-800 ml-2">
                 <Bug className="h-3 w-3 mr-1" />
                 Test Mode
               </Badge>
@@ -567,7 +567,7 @@ export default function Analyzer() {
         </CardHeader>
         <CardContent>
           {loading && (
-            <div className="flex items-center gap-2 text-blue-600 mb-4">
+            <div className="flex items-center gap-2 text-indigo-600 mb-4">
               <RefreshCw className="h-4 w-4 animate-spin" />
               <span>Loading companies...</span>
             </div>
@@ -614,10 +614,10 @@ export default function Analyzer() {
                 {companies.length === 0 ? (
                   <SelectItem value="no-companies" disabled>
                     <div className="text-center py-2">
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-slate-500">
                         No companies found
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-slate-400">
                         Create companies in "New Account" page
                       </p>
                     </div>
@@ -627,7 +627,7 @@ export default function Analyzer() {
                     <SelectItem key={company.id} value={company.id.toString()}>
                       <div className="flex flex-col py-1">
                         <span className="font-medium">{company.name}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500">
                           {company.industry} • {company.company_size} •{" "}
                           {company.region}
                         </span>
@@ -639,7 +639,7 @@ export default function Analyzer() {
             </Select>
 
             {companies.length > 0 && !loading && (
-              <p className="text-xs text-green-600">
+              <p className="text-xs text-emerald-600">
                 ✅ Found {companies.length} companies
               </p>
             )}
@@ -650,7 +650,7 @@ export default function Analyzer() {
                 <Button
                   onClick={() => generateAnalysis(selectedCompanyId)}
                   disabled={analyzing}
-                  className="bg-purple-600 hover:bg-purple-700"
+                  className="bg-indigo-600 hover:bg-indigo-700"
                 >
                   {analyzing ? (
                     <>
@@ -701,20 +701,20 @@ export default function Analyzer() {
                 <CardContent className="text-center py-12">
                   <div className="flex flex-col items-center gap-4">
                     <div className="relative">
-                      <Brain className="h-12 w-12 text-purple-600 animate-pulse" />
-                      <Sparkles className="h-6 w-6 text-yellow-500 absolute -top-1 -right-1 animate-bounce" />
+                      <Brain className="h-12 w-12 text-indigo-600 animate-pulse" />
+                      <Sparkles className="h-6 w-6 text-amber-500 absolute -top-1 -right-1 animate-bounce" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">
                         Comprehensive AI Analysis in Progress
                       </h3>
-                      <p className="text-gray-600 mb-4">
+                      <p className="text-slate-600 mb-4">
                         OpenAI is performing deep analysis of{" "}
                         {selectedCompany?.name} including business case
                         development, competitive analysis, and implementation
                         roadmap...
                       </p>
-                      <div className="flex items-center justify-center gap-2 text-sm text-purple-600">
+                      <div className="flex items-center justify-center gap-2 text-sm text-indigo-600">
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         <span>
                           This may take 30-60 seconds for comprehensive analysis
@@ -795,12 +795,12 @@ export default function Analyzer() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-4 mb-4">
                           <div className="flex items-center gap-2">
-                            <CheckCircle className="h-6 w-6 text-green-600" />
-                            <span className="text-lg font-semibold text-gray-900">
+                            <CheckCircle className="h-6 w-6 text-emerald-600" />
+                            <span className="text-lg font-semibold text-slate-900">
                               {analysisData.overallFit} Fit
                             </span>
                           </div>
-                          <Badge className="bg-green-100 text-green-800 text-lg px-3 py-1">
+                          <Badge className="bg-emerald-100 text-emerald-800 text-lg px-3 py-1">
                             {analysisData.fitScore}% Match
                           </Badge>
                         </div>
@@ -808,21 +808,21 @@ export default function Analyzer() {
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <Building className="h-4 w-4 text-gray-500" />
+                              <Building className="h-4 w-4 text-slate-500" />
                               <span className="text-sm">
                                 <strong>Industry:</strong>{" "}
                                 {selectedCompany.industry}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4 text-gray-500" />
+                              <Users className="h-4 w-4 text-slate-500" />
                               <span className="text-sm">
                                 <strong>Size:</strong>{" "}
                                 {selectedCompany.company_size}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4 text-gray-500" />
+                              <MapPin className="h-4 w-4 text-slate-500" />
                               <span className="text-sm">
                                 <strong>Region:</strong>{" "}
                                 {selectedCompany.region}
@@ -830,7 +830,7 @@ export default function Analyzer() {
                             </div>
                             {selectedCompany.website && (
                               <div className="flex items-center gap-2">
-                                <Globe className="h-4 w-4 text-gray-500" />
+                                <Globe className="h-4 w-4 text-slate-500" />
                                 <span className="text-sm">
                                   <strong>Website:</strong>{" "}
                                   <a
@@ -849,7 +849,7 @@ export default function Analyzer() {
                           <div className="space-y-2">
                             {selectedCompany.budget && (
                               <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-gray-500" />
+                                <DollarSign className="h-4 w-4 text-slate-500" />
                                 <span className="text-sm">
                                   <strong>Budget:</strong>{" "}
                                   {selectedCompany.budget}
@@ -858,7 +858,7 @@ export default function Analyzer() {
                             )}
                             {selectedCompany.timeline && (
                               <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-gray-500" />
+                                <Clock className="h-4 w-4 text-slate-500" />
                                 <span className="text-sm">
                                   <strong>Timeline:</strong>{" "}
                                   {selectedCompany.timeline}
@@ -867,7 +867,7 @@ export default function Analyzer() {
                             )}
                             {selectedCompany.priority && (
                               <div className="flex items-center gap-2">
-                                <AlertCircle className="h-4 w-4 text-gray-500" />
+                                <AlertCircle className="h-4 w-4 text-slate-500" />
                                 <span className="text-sm">
                                   <strong>Priority:</strong>{" "}
                                   {selectedCompany.priority}
@@ -899,15 +899,15 @@ export default function Analyzer() {
                             (factor, index) => (
                               <li
                                 key={index}
-                                className="flex items-start gap-2 text-sm text-gray-600"
+                                className="flex items-start gap-2 text-sm text-slate-600"
                               >
-                                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                                 {factor}
                               </li>
                             )
                           )
                         ) : (
-                          <li className="text-sm text-gray-400 italic">
+                          <li className="text-sm text-slate-400 italic">
                             No key success factors identified.
                           </li>
                         )}
@@ -1054,12 +1054,12 @@ export default function Analyzer() {
                     </div>
 
                     {/* AI Analysis Methodology */}
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-gray-600" />
+                    <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <h5 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-slate-600" />
                         AI Analysis Methodology
                       </h5>
-                      <div className="text-sm text-gray-700 space-y-2">
+                      <div className="text-sm text-slate-700 space-y-2">
                         <p>
                           <strong>Data Sources:</strong> Industry benchmarks for{" "}
                           {selectedCompany.industry}, regional market data for{" "}
@@ -1087,58 +1087,58 @@ export default function Analyzer() {
 
                 {/* Business Case Overview */}
                 {analysisData.businessCase && (
-                  <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+                  <Card className="bg-gradient-to-r from-slate-50 to-slate-100 border-slate-200 shadow-md rounded-xl">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-blue-600" />
+                      <CardTitle className="flex items-center gap-2 text-indigo-700 font-semibold">
+                        <BarChart3 className="h-5 w-5 text-amber-600" />
                         Business Case Summary
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-4 md:grid-cols-5">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-blue-600">
+                          <div className="text-2xl font-bold text-amber-600">
                             {formatLargeCurrency(
                               analysisData.businessCase.totalInvestment
                             )}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-slate-600">
                             Total Investment
                           </div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600">
+                          <div className="text-2xl font-bold text-emerald-700">
                             {formatLargeCurrency(
                               analysisData.businessCase.projectedSavings
                             )}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-slate-600">
                             Projected Savings
                           </div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-purple-600">
+                          <div className="text-2xl font-bold text-indigo-700">
                             {analysisData.businessCase.paybackPeriod}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-slate-600">
                             Payback Period
                           </div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-orange-600">
+                          <div className="text-2xl font-bold text-slate-700">
                             {formatLargeCurrency(
                               analysisData.businessCase.netPresentValue
                             )}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-slate-600">
                             Net Present Value
                           </div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-red-600">
+                          <div className="text-2xl font-bold text-amber-600">
                             {analysisData.businessCase.riskAdjustedROI}%
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-slate-600">
                             Risk-Adjusted ROI
                           </div>
                         </div>
@@ -1173,7 +1173,7 @@ export default function Analyzer() {
                           )
                         )
                       ) : (
-                        <div className="col-span-2 text-center py-4 text-gray-400 italic">
+                        <div className="col-span-2 text-center py-4 text-slate-400 italic">
                           No business challenges identified.
                         </div>
                       )}
@@ -1183,8 +1183,8 @@ export default function Analyzer() {
 
                 {/* Recommended Solutions – Enhanced */}
                 <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <Sparkles className="h-6 w-6 text-purple-600" />
+                  <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <Sparkles className="h-6 w-6 text-amber-600" />
                     AI-Recommended SAP Solutions
                   </h2>
 
@@ -1192,26 +1192,33 @@ export default function Analyzer() {
                     analysisData.recommendedSolutions
                       .sort((a, b) => a.priority - b.priority)
                       .map((solution, index) => (
-                        <Card key={solution.module} className="overflow-hidden">
+                        <Card
+                          key={solution.module}
+                          className="overflow-hidden bg-slate-50 border-slate-200 shadow-md rounded-xl"
+                        >
                           <CardHeader>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <CardTitle className="text-xl text-gray-900">
+                                <CardTitle className="text-xl text-slate-900 font-semibold">
                                   SAP {solution.module}
                                 </CardTitle>
                                 <Badge
-                                  className={getFitColor(
-                                    solution.fit || "Medium"
-                                  )}
+                                  className={
+                                    getFitColor(solution.fit || "Medium") +
+                                    " font-medium rounded-full px-3 py-1"
+                                  }
                                 >
                                   {solution.fit || "Medium"} Fit
                                 </Badge>
-                                <Badge variant="outline" className="text-xs">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs border-slate-300 bg-slate-100 text-slate-700 font-medium rounded-full px-3 py-1"
+                                >
                                   Priority {solution.priority}
                                 </Badge>
                               </div>
                               <div className="text-right">
-                                <div className="text-sm text-gray-500">
+                                <div className="text-sm text-slate-500">
                                   Complexity
                                 </div>
                                 <div
@@ -1230,34 +1237,34 @@ export default function Analyzer() {
                               {/* Key Metrics */}
                               <div className="space-y-4">
                                 <div className="flex items-center gap-2">
-                                  <TrendingUp className="h-5 w-5 text-green-600" />
+                                  <TrendingUp className="h-5 w-5 text-emerald-700" />
                                   <div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-sm text-slate-600">
                                       Estimated ROI
                                     </p>
-                                    <p className="text-lg font-semibold text-green-600">
+                                    <p className="text-lg font-semibold text-emerald-700">
                                       {solution.estimatedROI}%
                                     </p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Clock className="h-5 w-5 text-blue-600" />
+                                  <Clock className="h-5 w-5 text-indigo-700" />
                                   <div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-sm text-slate-600">
                                       Time to Value
                                     </p>
-                                    <p className="text-lg font-semibold text-blue-600">
+                                    <p className="text-lg font-semibold text-indigo-700">
                                       {solution.timeToValue}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <DollarSign className="h-5 w-5 text-purple-600" />
+                                  <DollarSign className="h-5 w-5 text-amber-600" />
                                   <div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-sm text-slate-600">
                                       Investment Range
                                     </p>
-                                    <p className="text-lg font-semibold text-purple-600">
+                                    <p className="text-lg font-semibold text-amber-600">
                                       {formatCurrency(
                                         solution.estimatedCostMin || 0
                                       )}{" "}
@@ -1272,8 +1279,8 @@ export default function Analyzer() {
 
                               {/* Key Benefits */}
                               <div className="lg:col-span-2">
-                                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                  <Zap className="h-4 w-4 text-yellow-600" />
+                                <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                                  <Zap className="h-4 w-4 text-amber-600" />
                                   Key Benefits
                                 </h4>
                                 <div className="grid gap-2 sm:grid-cols-2">
@@ -1282,26 +1289,26 @@ export default function Analyzer() {
                                     solution.keyBenefits.map((benefit, i) => (
                                       <div
                                         key={i}
-                                        className="flex items-start gap-2 text-sm text-gray-600"
+                                        className="flex items-start gap-2 text-sm text-slate-600"
                                       >
-                                        <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                        <CheckCircle className="h-4 w-4 text-emerald-700 mt-0.5 flex-shrink-0" />
                                         {benefit}
                                       </div>
                                     ))
                                   ) : (
-                                    <div className="col-span-2 text-sm text-gray-400 italic">
+                                    <div className="col-span-2 text-sm text-slate-400 italic">
                                       No key benefits identified.
                                     </div>
                                   )}
                                 </div>
 
                                 {solution.businessImpact && (
-                                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                    <h5 className="font-medium text-blue-900 mb-1 flex items-center gap-2">
+                                  <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200">
+                                    <h5 className="font-medium text-indigo-700 mb-1 flex items-center gap-2">
                                       <Activity className="h-4 w-4" />
                                       Business Impact
                                     </h5>
-                                    <p className="text-sm text-blue-800">
+                                    <p className="text-sm text-slate-800">
                                       {solution.businessImpact}
                                     </p>
                                   </div>
@@ -1315,8 +1322,8 @@ export default function Analyzer() {
                                   solution.technicalRequirements
                                 ) ? (
                                   <div>
-                                    <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                                      <Settings className="h-4 w-4 text-gray-600" />
+                                    <h5 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                                      <Settings className="h-4 w-4 text-slate-600" />
                                       Technical Requirements
                                     </h5>
                                     <ul className="space-y-1">
@@ -1324,7 +1331,7 @@ export default function Analyzer() {
                                         (req, i) => (
                                           <li
                                             key={i}
-                                            className="text-xs text-gray-600 flex items-start gap-1"
+                                            className="text-xs text-slate-600 flex items-start gap-1"
                                           >
                                             <Cpu className="h-3 w-3 mt-0.5 flex-shrink-0" />
                                             {req}
@@ -1338,8 +1345,8 @@ export default function Analyzer() {
                                 {solution.successMetrics &&
                                 Array.isArray(solution.successMetrics) ? (
                                   <div>
-                                    <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                                      <Gauge className="h-4 w-4 text-gray-600" />
+                                    <h5 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                                      <Gauge className="h-4 w-4 text-slate-600" />
                                       Success Metrics
                                     </h5>
                                     <ul className="space-y-1">
@@ -1347,7 +1354,7 @@ export default function Analyzer() {
                                         (metric, i) => (
                                           <li
                                             key={i}
-                                            className="text-xs text-gray-600 flex items-start gap-1"
+                                            className="text-xs text-slate-600 flex items-start gap-1"
                                           >
                                             <LineChart className="h-3 w-3 mt-0.5 flex-shrink-0" />
                                             {metric}
@@ -1360,130 +1367,31 @@ export default function Analyzer() {
                               </div>
 
                               {/* AI Analysis Context */}
-                              <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200 lg:col-span-2">
-                                <h5 className="font-medium text-purple-900 mb-2 flex items-center gap-2">
+                              <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200 lg:col-span-2">
+                                <h5 className="font-medium text-indigo-700 mb-2 flex items-center gap-2">
                                   <Brain className="h-4 w-4" />
                                   AI Analysis Context
                                 </h5>
-                                <div className="text-sm text-purple-800 space-y-2">
+                                <div className="text-sm text-slate-800 space-y-2">
                                   {solution.moduleAnalysisContext ? (
                                     <div className="mb-2">
                                       {solution.moduleAnalysisContext}
                                     </div>
                                   ) : (
-                                    <>
-                                      <div className="flex items-start gap-2">
-                                        <Building className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                        <span>
-                                          <strong>Industry Alignment:</strong>{" "}
-                                          {selectedCompany.industry} sector
-                                          analysis shows strong fit for{" "}
-                                          {solution.module}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-start gap-2">
-                                        <Users className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                        <span>
-                                          <strong>Company Scale:</strong>{" "}
-                                          {selectedCompany.company_size} size
-                                          optimal for {solution.module}{" "}
-                                          implementation
-                                        </span>
-                                      </div>
-                                      {selectedCompany.business_challenges && (
-                                        <div className="flex items-start gap-2">
-                                          <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                          <span>
-                                            <strong>
-                                              Business Challenges:
-                                            </strong>{" "}
-                                            "
-                                            {selectedCompany.business_challenges.substring(
-                                              0,
-                                              100
-                                            )}
-                                            ..." directly addressed by{" "}
-                                            {solution.module}
-                                          </span>
-                                        </div>
-                                      )}
-                                      {selectedCompany.current_systems && (
-                                        <div className="flex items-start gap-2">
-                                          <Settings className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                          <span>
-                                            <strong>Current Systems:</strong>{" "}
-                                            Integration with existing{" "}
-                                            {selectedCompany.current_systems.substring(
-                                              0,
-                                              80
-                                            )}
-                                            ... considered in recommendation
-                                          </span>
-                                        </div>
-                                      )}
-                                      {selectedCompany.budget && (
-                                        <div className="flex items-start gap-2">
-                                          <DollarSign className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                          <span>
-                                            <strong>Budget Alignment:</strong>{" "}
-                                            {selectedCompany.budget} budget
-                                            range compatible with{" "}
-                                            {solution.module} investment
-                                          </span>
-                                        </div>
-                                      )}
-                                    </>
+                                    <div className="text-slate-400 italic">
+                                      No analysis context provided.
+                                    </div>
                                   )}
                                 </div>
                               </div>
-                            </div>
-
-                            {/* Risk Mitigation */}
-                            {solution.riskMitigation &&
-                            Array.isArray(solution.riskMitigation) ? (
-                              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                                <h5 className="font-medium text-yellow-900 mb-2 flex items-center gap-2">
-                                  <Shield className="h-4 w-4" />
-                                  Risk Mitigation Strategies
-                                </h5>
-                                <div className="grid gap-1 sm:grid-cols-2">
-                                  {solution.riskMitigation.map((risk, i) => (
-                                    <div
-                                      key={i}
-                                      className="text-sm text-yellow-800 flex items-start gap-1"
-                                    >
-                                      <Lock className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                      {risk}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-
-                            <Separator className="my-4" />
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                Generate Proposal
-                              </Button>
-                              <Button size="sm" variant="outline">
-                                Add to Pipeline
-                              </Button>
-                              <Button size="sm" variant="outline">
-                                Schedule Demo
-                              </Button>
                             </div>
                           </CardContent>
                         </Card>
                       ))
                   ) : (
-                    <p className="text-gray-500 italic">
-                      No recommended solutions available.
-                    </p>
+                    <div className="text-slate-400 italic">
+                      No recommended solutions identified.
+                    </div>
                   )}
                 </div>
 
@@ -1625,12 +1533,12 @@ export default function Analyzer() {
                     </div>
 
                     {/* AI Analysis Methodology */}
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-gray-600" />
+                    <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <h5 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-slate-600" />
                         AI Analysis Methodology
                       </h5>
-                      <div className="text-sm text-gray-700 space-y-2">
+                      <div className="text-sm text-slate-700 space-y-2">
                         <p>
                           <strong>Data Sources:</strong> Industry benchmarks for{" "}
                           {selectedCompany.industry}, regional market data for{" "}
@@ -1675,7 +1583,7 @@ export default function Analyzer() {
                                 <Badge variant="outline" className="text-xs">
                                   Phase {index + 1}
                                 </Badge>
-                                <h4 className="font-semibold text-gray-900">
+                                <h4 className="font-semibold text-slate-900">
                                   {phase.phase}
                                 </h4>
                                 <Badge className="bg-blue-100 text-blue-800">
@@ -1684,7 +1592,7 @@ export default function Analyzer() {
                               </div>
                               <div className="grid gap-4 md:grid-cols-3">
                                 <div>
-                                  <h5 className="font-medium text-gray-700 mb-2">
+                                  <h5 className="font-medium text-slate-700 mb-2">
                                     Activities
                                   </h5>
                                   <ul className="space-y-1">
@@ -1694,22 +1602,22 @@ export default function Analyzer() {
                                         (activity, actIndex) => (
                                           <li
                                             key={actIndex}
-                                            className="text-sm text-gray-600 flex items-start gap-1"
+                                            className="text-sm text-slate-600 flex items-start gap-1"
                                           >
-                                            <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-green-600" />
+                                            <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-emerald-600" />
                                             {activity}
                                           </li>
                                         )
                                       )
                                     ) : (
-                                      <li className="text-sm text-gray-400 italic">
+                                      <li className="text-sm text-slate-400 italic">
                                         No activities specified.
                                       </li>
                                     )}
                                   </ul>
                                 </div>
                                 <div>
-                                  <h5 className="font-medium text-gray-700 mb-2">
+                                  <h5 className="font-medium text-slate-700 mb-2">
                                     Deliverables
                                   </h5>
                                   <ul className="space-y-1">
@@ -1719,7 +1627,7 @@ export default function Analyzer() {
                                         (deliverable, delIndex) => (
                                           <li
                                             key={delIndex}
-                                            className="text-sm text-gray-600 flex items-start gap-1"
+                                            className="text-sm text-slate-600 flex items-start gap-1"
                                           >
                                             <FileText className="h-3 w-3 mt-0.5 flex-shrink-0 text-blue-600" />
                                             {deliverable}
@@ -1727,14 +1635,14 @@ export default function Analyzer() {
                                         )
                                       )
                                     ) : (
-                                      <li className="text-sm text-gray-400 italic">
+                                      <li className="text-sm text-slate-400 italic">
                                         No deliverables specified.
                                       </li>
                                     )}
                                   </ul>
                                 </div>
                                 <div>
-                                  <h5 className="font-medium text-gray-700 mb-2">
+                                  <h5 className="font-medium text-slate-700 mb-2">
                                     Resources
                                   </h5>
                                   <ul className="space-y-1">
@@ -1744,7 +1652,7 @@ export default function Analyzer() {
                                         (resource, resIndex) => (
                                           <li
                                             key={resIndex}
-                                            className="text-sm text-gray-600 flex items-start gap-1"
+                                            className="text-sm text-slate-600 flex items-start gap-1"
                                           >
                                             <Users className="h-3 w-3 mt-0.5 flex-shrink-0 text-purple-600" />
                                             {resource}
@@ -1752,7 +1660,7 @@ export default function Analyzer() {
                                         )
                                       )
                                     ) : (
-                                      <li className="text-sm text-gray-400 italic">
+                                      <li className="text-sm text-slate-400 italic">
                                         No resources specified.
                                       </li>
                                     )}
@@ -1772,14 +1680,14 @@ export default function Analyzer() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Target className="h-5 w-5 text-green-600" />
+                        <Target className="h-5 w-5 text-emerald-600" />
                         Competitive Analysis
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-6 md:grid-cols-3">
                         <div>
-                          <h4 className="font-semibold text-green-900 mb-3">
+                          <h4 className="font-semibold text-emerald-900 mb-3">
                             SAP Advantages
                           </h4>
                           <ul className="space-y-2">
@@ -1791,15 +1699,15 @@ export default function Analyzer() {
                                 (advantage, index) => (
                                   <li
                                     key={index}
-                                    className="flex items-start gap-2 text-sm text-green-800"
+                                    className="flex items-start gap-2 text-sm text-emerald-800"
                                   >
-                                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                    <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                                     {advantage}
                                   </li>
                                 )
                               )
                             ) : (
-                              <li className="text-sm text-gray-400 italic">
+                              <li className="text-sm text-slate-400 italic">
                                 No SAP advantages identified.
                               </li>
                             )}
@@ -1828,7 +1736,7 @@ export default function Analyzer() {
                                 )
                               )
                             ) : (
-                              <li className="text-sm text-gray-400 italic">
+                              <li className="text-sm text-slate-400 italic">
                                 No competitor comparisons available.
                               </li>
                             )}
@@ -1855,7 +1763,7 @@ export default function Analyzer() {
                                 )
                               )
                             ) : (
-                              <li className="text-sm text-gray-400 italic">
+                              <li className="text-sm text-slate-400 italic">
                                 No differentiators identified.
                               </li>
                             )}
@@ -1881,14 +1789,26 @@ export default function Analyzer() {
                         analysisData.riskFactors.map((risk, index) => (
                           <div
                             key={index}
-                            className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border border-red-200"
+                            className="flex flex-col gap-1 p-3 bg-red-50 rounded-lg border border-red-200"
                           >
-                            <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-red-800">{risk}</span>
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                              {typeof risk === "object" && risk !== null ? (
+                                <span className="text-sm text-red-800">
+                                  <strong>Risk:</strong> {risk.risk}
+                                  <br />
+                                  <strong>Mitigation:</strong> {risk.mitigation}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-red-800">
+                                  {risk}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ))
                       ) : (
-                        <div className="col-span-2 text-center py-4 text-gray-400 italic">
+                        <div className="col-span-2 text-center py-4 text-slate-400 italic">
                           No risk factors identified.
                         </div>
                       )}
@@ -1918,7 +1838,7 @@ export default function Analyzer() {
                               </li>
                             ))
                           ) : (
-                            <li className="text-sm text-gray-400 italic">
+                            <li className="text-sm text-slate-400 italic">
                               No next steps identified.
                             </li>
                           )}
@@ -1955,10 +1875,10 @@ export default function Analyzer() {
                 <Card>
                   <CardContent className="text-center py-12">
                     <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
                       Ready to Generate Comprehensive Analysis
                     </h3>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-slate-600 mb-4">
                       Click "Generate Comprehensive Analysis" to create
                       AI-powered SAP fit analysis with business case,
                       implementation roadmap, and competitive analysis for{" "}
@@ -1989,11 +1909,11 @@ export default function Analyzer() {
             {!loadingPrevious && previousAnalyses.length === 0 && (
               <Card>
                 <CardContent className="text-center py-12">
-                  <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <History className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
                     No Previous Analyses
                   </h3>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-slate-600 mb-4">
                     No previous AI analyses found for {selectedCompany?.name}.
                     Generate your first analysis to get started.
                   </p>
@@ -2030,7 +1950,7 @@ export default function Analyzer() {
                               </Badge>
                             )}
                           </CardTitle>
-                          <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                          <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
                             <Calendar className="h-4 w-4" />
                             Generated on{" "}
                             {new Date(
@@ -2046,7 +1966,7 @@ export default function Analyzer() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-green-100 text-green-800">
+                          <Badge className="bg-emerald-100 text-emerald-800">
                             {analysis.analysis_results?.fitScore ||
                               analysis.confidence_score}
                             % Match
@@ -2062,7 +1982,7 @@ export default function Analyzer() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div>
                           <p className="text-sm font-medium">Solutions</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-600">
                             {analysis.analysis_results?.recommendedSolutions
                               ?.length || 0}{" "}
                             recommended
@@ -2070,7 +1990,7 @@ export default function Analyzer() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">Success Factors</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-600">
                             {analysis.analysis_results?.keySuccessFactors
                               ?.length || 0}{" "}
                             identified
@@ -2078,7 +1998,7 @@ export default function Analyzer() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">Challenges</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-600">
                             {analysis.analysis_results?.businessChallenges
                               ?.length || 0}{" "}
                             identified
@@ -2086,7 +2006,7 @@ export default function Analyzer() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">Risk Factors</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-600">
                             {analysis.analysis_results?.riskFactors?.length ||
                               0}{" "}
                             identified
@@ -2168,10 +2088,10 @@ export default function Analyzer() {
         <Card>
           <CardContent className="text-center py-12">
             <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
               Select a Company for Comprehensive Analysis
             </h3>
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               Choose a company from the dropdown above to generate comprehensive
               AI-powered SAP analysis with business case development,
               implementation roadmap, and competitive analysis.

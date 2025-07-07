@@ -1,300 +1,335 @@
-import { type NextRequest, NextResponse } from "next/server"
-import PptxGenJS from "pptxgenjs"
+import { type NextRequest, NextResponse } from "next/server";
+import PptxGenJS from "pptxgenjs";
+import { readFile } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
+import { parseTemplateStyles, applyTemplateStyles } from "./template-parser";
 
 interface Slide {
-  id: number
-  title: string
-  content: string
-  type: string
-  order: number
+  id: number;
+  title: string;
+  content: string;
+  type: string;
+  order: number;
 }
 
 interface BackgroundOption {
-  id: string
-  name: string
-  type: "solid" | "gradient" | "image"
-  value: string
-  preview: string
+  id: string;
+  name: string;
+  type: "solid" | "gradient" | "image";
+  value: string;
+  preview: string;
 }
 
 interface ExportRequest {
-  slides: Slide[]
+  slides: Slide[];
   deckConfig: {
-    deckName: string
-    presenterName: string
-    presentationDate: string
-    targetCompany: string
-    additionalNotes: string
-  }
-  background?: BackgroundOption
+    deckName: string;
+    presenterName: string;
+    presentationDate: string;
+    targetCompany: string;
+    additionalNotes: string;
+  };
+  background?: BackgroundOption;
+  templateId?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: ExportRequest = await request.json()
-    const { slides, deckConfig, background } = body
+    const body: ExportRequest = await request.json();
+    const { slides, deckConfig, background, templateId } = body;
 
     if (!slides || slides.length === 0) {
-      return NextResponse.json({ error: "No slides provided" }, { status: 400 })
+      return NextResponse.json(
+        { error: "No slides provided" },
+        { status: 400 }
+      );
     }
 
-    // Create new presentation
-    const pptx = new PptxGenJS()
+    console.log("Starting PowerPoint generation...");
+
+    let pptx: PptxGenJS;
+    let templateStyles = null;
+
+    // Check if template is provided
+    if (templateId) {
+      const TEMPLATES_DIR = join(process.cwd(), "uploads", "templates");
+      const templatePath = join(TEMPLATES_DIR, templateId);
+
+      if (!existsSync(templatePath)) {
+        return NextResponse.json(
+          { error: "Template not found" },
+          { status: 404 }
+        );
+      }
+
+      try {
+        // Parse template styles
+        templateStyles = await parseTemplateStyles(templatePath);
+        pptx = new PptxGenJS();
+        console.log("Template styles loaded:", templateStyles);
+      } catch (error) {
+        console.error("Failed to process template:", error);
+        return NextResponse.json(
+          { error: "Failed to process template" },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Create new presentation
+      pptx = new PptxGenJS();
+    }
 
     // Set presentation properties
-    pptx.author = deckConfig.presenterName || "Virgil.io"
-    pptx.company = "Virgil.io"
-    pptx.subject = deckConfig.deckName || "SAP Solutions Presentation"
-    pptx.title = deckConfig.deckName || "SAP Solutions Presentation"
+    pptx.author = deckConfig.presenterName || "Virgil.io";
+    pptx.company = "Virgil.io";
+    pptx.subject = deckConfig.deckName || "SAP Solutions Presentation";
+    pptx.title = deckConfig.deckName || "SAP Solutions Presentation";
 
     // Define slide layouts and styles
-    const slideWidth = 10
-    const slideHeight = 7.5
+    const slideWidth = 10;
+    const slideHeight = 7.5;
 
     // Sort slides by order
-    const sortedSlides = slides.sort((a, b) => a.order - b.order)
+    const sortedSlides = slides.sort((a, b) => a.order - b.order);
 
-    // Helper function to get background configuration
-    const getSlideBackground = () => {
-      if (!background || background.id === "white") {
-        return { color: "FFFFFF" }
+    // Helper function to safely get color value
+    const getSafeColor = (colorValue: any): string => {
+      if (!colorValue) return "FFFFFF";
+      const colorStr = String(colorValue);
+      // Remove # if present and ensure it's a valid hex color
+      const cleanColor = colorStr.startsWith("#")
+        ? colorStr.substring(1)
+        : colorStr;
+      // Validate hex color format (6 characters, hex only)
+      if (/^[0-9A-Fa-f]{6}$/.test(cleanColor)) {
+        return cleanColor.toUpperCase();
       }
+      return "FFFFFF"; // Default to white if invalid
+    };
 
-      switch (background.type) {
-        case "solid":
-          return { color: background.value.replace("#", "") }
+    // Helper function to add decorative elements based on template design
+    const addDecorativeElements = (slide: any, templateStyles: any) => {
+      if (!templateStyles?.hasShapes) return;
 
-        case "gradient":
-          // Extract gradient colors for PowerPoint
-          if (background.id === "navy-gradient") {
-            return {
-              type: "gradient",
-              angle: 135,
-              colors: [
-                { color: "1e3a5f", position: 0 },
-                { color: "3b82f6", position: 100 },
-              ],
-            }
-          } else if (background.id === "blue-gradient") {
-            return {
-              type: "gradient",
-              angle: 135,
-              colors: [
-                { color: "3b82f6", position: 0 },
-                { color: "1d4ed8", position: 100 },
-              ],
-            }
-          } else if (background.id === "subtle-gradient") {
-            return {
-              type: "gradient",
-              angle: 135,
-              colors: [
-                { color: "f8fafc", position: 0 },
-                { color: "e2e8f0", position: 100 },
-              ],
-            }
-          }
-          return { color: "FFFFFF" }
+      const primaryColor = getSafeColor(templateStyles.primaryColor);
+      const accentColor = getSafeColor(templateStyles.accentColor);
+      const design = templateStyles.templateDesign;
 
-        case "image":
-          // For custom images, we'll use the base64 data
-          if (background.value.startsWith("data:image")) {
-            return {
-              path: background.value,
-              sizing: { type: "cover", w: slideWidth, h: slideHeight },
-            }
-          }
-          return { color: "FFFFFF" }
+      try {
+        if (design === "marketing" || design === "modern") {
+          // Add decorative rectangle on the left
+          slide.addShape("rect", {
+            x: 0,
+            y: 0,
+            w: 0.3,
+            h: slideHeight,
+            fill: { color: primaryColor },
+            line: { color: primaryColor },
+            opacity: 0.1,
+          });
 
-        default:
-          return { color: "FFFFFF" }
+          // Add accent circle
+          slide.addShape("ellipse", {
+            x: slideWidth - 1.5,
+            y: 0.5,
+            w: 1,
+            h: 1,
+            fill: { color: accentColor },
+            line: { color: accentColor },
+            opacity: 0.2,
+          });
+        } else if (design === "organic") {
+          // Add organic circle
+          slide.addShape("ellipse", {
+            x: 0.5,
+            y: 0.5,
+            w: 2,
+            h: 2,
+            fill: { color: accentColor },
+            line: { color: accentColor },
+            opacity: 0.15,
+          });
+        } else if (design === "corporate" || design === "business") {
+          // Add professional accent bar
+          slide.addShape("rect", {
+            x: 0,
+            y: 0,
+            w: 0.2,
+            h: slideHeight,
+            fill: { color: primaryColor },
+            line: { color: primaryColor },
+            opacity: 0.3,
+          });
+        }
+      } catch (error) {
+        console.log("Could not add decorative elements:", error);
       }
-    }
+    };
 
-    // Helper function to get text color based on background
-    const getTextColor = () => {
-      if (!background) return "1f2937"
+    console.log(`Processing ${sortedSlides.length} slides...`);
 
-      // Light backgrounds use dark text
-      if (["white", "light-gray", "subtle-gradient"].includes(background.id)) {
-        return "1f2937"
-      }
-
-      // Dark backgrounds use white text
-      return "FFFFFF"
-    }
-
-    const getSecondaryTextColor = () => {
-      if (!background) return "374151"
-
-      // Light backgrounds use dark text
-      if (["white", "light-gray", "subtle-gradient"].includes(background.id)) {
-        return "374151"
-      }
-
-      // Dark backgrounds use light gray text
-      return "e5e7eb"
-    }
-
-    const getAccentTextColor = () => {
-      if (!background) return "6b7280"
-
-      // Light backgrounds use gray text
-      if (["white", "light-gray", "subtle-gradient"].includes(background.id)) {
-        return "6b7280"
-      }
-
-      // Dark backgrounds use lighter gray text
-      return "d1d5db"
-    }
-
-    const slideBackground = getSlideBackground()
-    const textColor = getTextColor()
-    const secondaryTextColor = getSecondaryTextColor()
-    const accentTextColor = getAccentTextColor()
-
-    // Process each slide
+    // Process each slide with template styling
     for (const slide of sortedSlides) {
-      const pptxSlide = pptx.addSlide()
+      try {
+        console.log(`Processing slide ${slide.order}: ${slide.title}`);
+        const pptxSlide = pptx.addSlide();
 
-      // Set slide background
-      if (slideBackground.type === "gradient") {
-        // PowerPoint gradient background
-        pptxSlide.background = {
-          fill: {
-            type: "gradient",
-            angle: slideBackground.angle,
-            colors: slideBackground.colors,
-          },
+        // Set slide background based on template
+        if (templateStyles) {
+          const bgColor = getSafeColor(templateStyles.slideBackground);
+          console.log(`Setting template background: ${bgColor}`);
+          pptxSlide.background = { color: bgColor };
+        } else {
+          // Use basic white background if no template
+          pptxSlide.background = { color: "FFFFFF" };
         }
-      } else if (slideBackground.path) {
-        // Image background
-        pptxSlide.background = {
-          path: slideBackground.path,
-          sizing: slideBackground.sizing,
+
+        // Add decorative elements based on template design
+        if (templateStyles) {
+          addDecorativeElements(pptxSlide, templateStyles);
         }
-      } else {
-        // Solid color background
-        pptxSlide.background = { color: slideBackground.color }
-      }
 
-      // Add slide title
-      pptxSlide.addText(slide.title, {
-        x: 0.5,
-        y: 0.5,
-        w: slideWidth - 1,
-        h: 1,
-        fontSize: 28,
-        bold: true,
-        color: textColor,
-        fontFace: "Arial",
-      })
+        // Get text colors based on template
+        const titleColor = getSafeColor(templateStyles?.titleColor || "1f2937");
+        const textColor = getSafeColor(templateStyles?.textColor || "374151");
+        const accentColor = getSafeColor(
+          templateStyles?.accentColor || "6b7280"
+        );
 
-      // Process slide content
-      const contentLines = slide.content.split("\n").filter((line) => line.trim())
-      let yPosition = 1.8
-      const lineHeight = 0.4
+        console.log(
+          `Using colors - Title: ${titleColor}, Text: ${textColor}, Accent: ${accentColor}`
+        );
 
-      for (const line of contentLines) {
-        if (line.trim().startsWith("•")) {
-          // Bullet point
-          pptxSlide.addText(line.trim(), {
-            x: 0.8,
+        // Add slide title with template styling
+        pptxSlide.addText(slide.title, {
+          x: templateStyles?.hasShapes ? 0.8 : 0.5,
+          y: 0.5,
+          w: slideWidth - (templateStyles?.hasShapes ? 1.6 : 1),
+          h: 1,
+          fontSize: templateStyles?.titleFontSize || 28,
+          bold: true,
+          color: titleColor,
+          fontFace: templateStyles?.fontFamily || "Arial",
+          align: "left",
+        });
+
+        // Process slide content with template styling
+        const contentLines = slide.content
+          .split("\n")
+          .filter((line) => line.trim());
+        let yPosition = 1.8;
+        const lineHeight = 0.4;
+
+        for (const line of contentLines) {
+          const textOptions = {
+            x: templateStyles?.hasShapes ? 1.2 : 0.8,
             y: yPosition,
-            w: slideWidth - 1.6,
+            w: slideWidth - (templateStyles?.hasShapes ? 2.4 : 1.6),
             h: lineHeight,
-            fontSize: 16,
-            color: secondaryTextColor,
-            fontFace: "Arial",
-            bullet: { type: "bullet", style: "•" },
-          })
-        } else if (line.trim().startsWith("-")) {
-          // Sub-bullet point
-          pptxSlide.addText(line.trim().substring(1).trim(), {
-            x: 1.2,
-            y: yPosition,
-            w: slideWidth - 2,
-            h: lineHeight,
-            fontSize: 14,
-            color: accentTextColor,
-            fontFace: "Arial",
-            bullet: { type: "bullet", style: "-" },
-          })
-        } else if (line.trim() && !line.includes(":")) {
-          // Regular text
-          pptxSlide.addText(line.trim(), {
-            x: 0.8,
-            y: yPosition,
-            w: slideWidth - 1.6,
-            h: lineHeight,
-            fontSize: 16,
-            color: secondaryTextColor,
-            fontFace: "Arial",
-          })
-        } else if (line.includes(":")) {
-          // Header/section text
-          pptxSlide.addText(line.trim(), {
-            x: 0.8,
-            y: yPosition,
-            w: slideWidth - 1.6,
-            h: lineHeight,
-            fontSize: 18,
-            bold: true,
+            fontSize: templateStyles?.bodyFontSize || 16,
             color: textColor,
-            fontFace: "Arial",
-          })
+            fontFace: templateStyles?.fontFamily || "Arial",
+          };
+
+          if (line.trim().startsWith("•")) {
+            // Bullet point with template styling
+            pptxSlide.addText(line.trim(), {
+              ...textOptions,
+              bullet: { type: "bullet", style: "•" },
+              indentLevel: 0,
+            });
+          } else if (line.trim().startsWith("-")) {
+            // Sub-bullet point with accent color
+            pptxSlide.addText(line.trim().substring(1).trim(), {
+              ...textOptions,
+              x: templateStyles?.hasShapes ? 1.6 : 1.2,
+              w: slideWidth - (templateStyles?.hasShapes ? 3.2 : 2),
+              fontSize: (templateStyles?.bodyFontSize || 16) - 2,
+              color: accentColor,
+              bullet: { type: "bullet", style: "-" },
+              indentLevel: 1,
+            });
+          } else if (line.trim() && !line.includes(":")) {
+            // Regular text
+            pptxSlide.addText(line.trim(), textOptions);
+          } else if (line.includes(":")) {
+            // Header/section text with title color
+            pptxSlide.addText(line.trim(), {
+              ...textOptions,
+              fontSize: (templateStyles?.bodyFontSize || 16) + 2,
+              bold: true,
+              color: titleColor,
+            });
+          }
+
+          yPosition += lineHeight;
+
+          // Prevent content from going off slide
+          if (yPosition > slideHeight - 1) {
+            break;
+          }
         }
 
-        yPosition += lineHeight
+        // Add footer with template styling
+        const footerText = deckConfig.targetCompany
+          ? `${deckConfig.targetCompany} | ${deckConfig.presentationDate}`
+          : `${deckConfig.presentationDate}`;
 
-        // Prevent content from going off slide
-        if (yPosition > slideHeight - 1) {
-          break
-        }
-      }
-
-      // Add slide number
-      pptxSlide.addText(`${slide.order}`, {
-        x: slideWidth - 1,
-        y: slideHeight - 0.5,
-        w: 0.5,
-        h: 0.3,
-        fontSize: 12,
-        color: accentTextColor,
-        align: "center",
-        fontFace: "Arial",
-      })
-
-      // Add company branding
-      if (deckConfig.targetCompany) {
-        pptxSlide.addText(`${deckConfig.targetCompany} | ${deckConfig.presentationDate}`, {
+        pptxSlide.addText(footerText, {
           x: 0.5,
           y: slideHeight - 0.5,
-          w: slideWidth - 2,
+          w: slideWidth - 1,
           h: 0.3,
           fontSize: 10,
-          color: accentTextColor,
-          fontFace: "Arial",
-        })
+          color: accentColor,
+          fontFace: templateStyles?.fontFamily || "Arial",
+          align: "center",
+        });
+
+        // Add slide number with template styling
+        pptxSlide.addText(`${slide.order}`, {
+          x: slideWidth - 1,
+          y: slideHeight - 0.5,
+          w: 0.5,
+          h: 0.3,
+          fontSize: 12,
+          color: accentColor,
+          align: "center",
+          fontFace: templateStyles?.fontFamily || "Arial",
+        });
+
+        console.log(`Successfully processed slide ${slide.order}`);
+      } catch (slideError) {
+        console.error(`Error processing slide ${slide.order}:`, slideError);
+        throw slideError;
       }
     }
 
+    console.log("Generating PowerPoint presentation...");
+
     // Generate the presentation
-    const pptxBuffer = await pptx.write({ outputType: "nodebuffer" })
+    const pptxBuffer = await pptx.write({ outputType: "nodebuffer" });
+
+    console.log("PowerPoint generation successful");
 
     // Return the file
-    const fileName = `${deckConfig.deckName || "SAP-Presentation"}.pptx`
+    const fileName = `${deckConfig.deckName || "SAP-Presentation"}.pptx`;
 
     return new NextResponse(pptxBuffer, {
       status: 200,
       headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "Content-Disposition": `attachment; filename="${fileName}"`,
         "Content-Length": pptxBuffer.length.toString(),
       },
-    })
+    });
   } catch (error) {
-    console.error("PowerPoint export error:", error)
-    return NextResponse.json({ error: "Failed to generate PowerPoint presentation" }, { status: 500 })
+    console.error("PowerPoint export error:", error);
+    return NextResponse.json(
+      { error: "Failed to generate PowerPoint presentation" },
+      { status: 500 }
+    );
   }
 }

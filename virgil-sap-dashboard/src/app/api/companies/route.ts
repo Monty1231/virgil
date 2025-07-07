@@ -30,7 +30,12 @@ export async function GET() {
     const { rows: companies } = await sql.query(selectQuery);
 
     console.log("🏢 API: Raw database result:", companies);
-    console.log("🏢 API: Result type:", typeof companies, "Is array:", Array.isArray(companies));
+    console.log(
+      "🏢 API: Result type:",
+      typeof companies,
+      "Is array:",
+      Array.isArray(companies)
+    );
     console.log("🏢 API: Number of companies:", companies.length);
 
     // Log each company for debugging
@@ -38,7 +43,9 @@ export async function GET() {
       console.log("🏢 API: Company details:");
       companies.forEach((company, index) => {
         console.log(
-          `  ${index + 1}. ID: ${company.id}, Name: "${company.name}", Industry: "${company.industry}"`
+          `  ${index + 1}. ID: ${company.id}, Name: "${
+            company.name
+          }", Industry: "${company.industry}"`
         );
       });
     }
@@ -79,12 +86,20 @@ export async function POST(request: Request) {
       uploaded_files,
     } = body;
 
-    console.log("🏢 API: Creating new company:", { name, industry, company_size, region });
+    console.log("🏢 API: Creating new company:", {
+      name,
+      industry,
+      company_size,
+      region,
+    });
 
     // Validate required fields
     if (!name || !industry || !company_size || !region) {
       return NextResponse.json(
-        { error: "Missing required fields: name, industry, company_size, region" },
+        {
+          error:
+            "Missing required fields: name, industry, company_size, region",
+        },
         { status: 400 }
       );
     }
@@ -136,37 +151,37 @@ export async function POST(request: Request) {
 
     console.log("🏢 API: Company created successfully:", newCompany);
 
-    // If files were uploaded, store file references
+    // If files were uploaded, link them to the company
     if (Array.isArray(uploaded_files) && uploaded_files.length > 0) {
       try {
-        const fileInsertQuery = `
-          INSERT INTO company_files (
-            company_id,
-            filename,
-            original_name,
-            file_size,
-            file_type,
-            category,
-            file_path
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7
-          )
+        console.log(
+          "🏢 API: Linking",
+          uploaded_files.length,
+          "files to company"
+        );
+
+        // Update the company_files table to link files to this company
+        const fileUpdateQuery = `
+          UPDATE company_files 
+          SET company_id = $1 
+          WHERE id = $2
         `;
+
         for (const file of uploaded_files) {
-          const fileValues = [
-            newCompany.id,
-            file.name,
-            file.name,
-            file.size,
-            file.type,
-            file.category,
-            file.url || "",
-          ];
-          await sql.query(fileInsertQuery, fileValues);
+          if (file.id) {
+            await sql.query(fileUpdateQuery, [newCompany.id, file.id]);
+            console.log(
+              "🏢 API: Linked file",
+              file.name,
+              "to company",
+              newCompany.id
+            );
+          }
         }
-        console.log("🏢 API: File references stored successfully");
+
+        console.log("🏢 API: File references linked successfully");
       } catch (fileError) {
-        console.error("🏢 API: Failed to store file references:", fileError);
+        console.error("🏢 API: Failed to link file references:", fileError);
         // Don't fail the request for file storage issues
       }
     }
@@ -177,7 +192,10 @@ export async function POST(request: Request) {
 
     // Handle duplicate company name (PostgreSQL unique_violation)
     if (error.code === "23505") {
-      return NextResponse.json({ error: "A company with this name already exists" }, { status: 409 });
+      return NextResponse.json(
+        { error: "A company with this name already exists" },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json(
