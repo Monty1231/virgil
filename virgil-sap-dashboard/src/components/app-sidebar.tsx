@@ -1,9 +1,18 @@
-"use client"
+"use client";
 
-import { BarChart3, FileText, Kanban, PlusCircle, Search, Settings, DollarSign, Bot } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import Image from "next/image"
+import {
+  BarChart3,
+  FileText,
+  Kanban,
+  PlusCircle,
+  Search,
+  Settings,
+  DollarSign,
+  Bot,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 import {
   Sidebar,
@@ -15,7 +24,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 const menuItems = [
   {
@@ -53,33 +62,39 @@ const menuItems = [
     url: "/settings",
     icon: Settings,
   },
-]
+];
 
 export function AppSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
-    <Sidebar className="border-r border-gray-200">
-      <SidebarHeader className="border-b border-gray-200 p-6">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar-background">
+      <SidebarHeader className="border-b border-sidebar-border p-6">
         <div className="flex items-center gap-4">
           <div className="flex-shrink-12">
-           <Image
-            src="/Virgil_blue.svg"
-            alt="My Logo"
-            width={32}
-            height={32}
-            className="h-40 w-40 rounded-full object-cover"
-          />
+            <Image
+              src="/Virgil_blue.svg"
+              alt="My Logo"
+              width={32}
+              height={32}
+              className="h-51 w-51 rounded-full object-cover"
+            />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Virgil AI</h1>
-            <p className="text-sm text-gray-500">SAP Sales Assistant</p>
+            <h1 className="text-subheading font-semibold text-sidebar-foreground">
+              Virgil AI
+            </h1>
+            <p className="text-caption text-sidebar-muted-foreground">
+              SAP Sales Assistant
+            </p>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-gray-600 font-medium">Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-muted-foreground font-medium">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
@@ -87,7 +102,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === item.url}
-                    className="text-gray-700 hover:text-blue-600 hover:bg-blue-50"
+                    className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
                   >
                     <Link href={item.url}>
                       <item.icon className="h-4 w-4" />
@@ -101,5 +116,5 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

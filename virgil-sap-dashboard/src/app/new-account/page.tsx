@@ -72,25 +72,25 @@ const companySizes = [
     value: "Small (1-100 employees)",
     label: "Small",
     range: "1-100 employees",
-    color: "bg-green-100 text-green-800",
+    color: "bg-green-100 text-green-800 border-green-200",
   },
   {
     value: "Medium (101-1000 employees)",
     label: "Medium",
     range: "101-1,000 employees",
-    color: "bg-blue-100 text-blue-800",
+    color: "bg-primary/10 text-primary border-primary/20",
   },
   {
     value: "Large (1001-5000 employees)",
     label: "Large",
     range: "1,001-5,000 employees",
-    color: "bg-purple-100 text-purple-800",
+    color: "bg-secondary text-secondary-foreground border-secondary/20",
   },
   {
     value: "Enterprise (5000+ employees)",
     label: "Enterprise",
     range: "5,000+ employees",
-    color: "bg-orange-100 text-orange-800",
+    color: "bg-accent text-accent-foreground border-accent/20",
   },
 ];
 
@@ -104,13 +104,21 @@ const regions = [
 ];
 
 const priorities = [
-  { value: "high", label: "High Priority", color: "bg-red-100 text-red-800" },
+  {
+    value: "high",
+    label: "High Priority",
+    color: "bg-red-100 text-red-800 border-red-200",
+  },
   {
     value: "medium",
     label: "Medium Priority",
-    color: "bg-yellow-100 text-yellow-800",
+    color: "bg-yellow-100 text-yellow-800 border-yellow-200",
   },
-  { value: "low", label: "Low Priority", color: "bg-green-100 text-green-800" },
+  {
+    value: "low",
+    label: "Low Priority",
+    color: "bg-green-100 text-green-800 border-green-200",
+  },
 ];
 
 const fileTypes = [

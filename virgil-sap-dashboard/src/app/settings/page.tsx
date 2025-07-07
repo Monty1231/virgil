@@ -1,14 +1,20 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import { User, Bell, Shield, Database, Save } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import { User, Bell, Shield, Database, Save } from "lucide-react";
 
 export default function Settings() {
   return (
@@ -16,8 +22,10 @@ export default function Settings() {
       <div className="flex items-center gap-4">
         <SidebarTrigger />
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600">Manage your account and application preferences</p>
+          <h1 className="text-heading text-foreground">Settings</h1>
+          <p className="text-caption text-muted-foreground">
+            Manage your account and application preferences
+          </p>
         </div>
       </div>
 
@@ -26,7 +34,7 @@ export default function Settings() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-600" />
+              <User className="h-5 w-5 text-primary" />
               Profile Settings
             </CardTitle>
           </CardHeader>
@@ -44,7 +52,11 @@ export default function Settings() {
 
             <div>
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" defaultValue="sarah.johnson@company.com" />
+              <Input
+                id="email"
+                type="email"
+                defaultValue="sarah.johnson@company.com"
+              />
             </div>
 
             <div>
@@ -67,7 +79,7 @@ export default function Settings() {
               </Select>
             </div>
 
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-primary hover:bg-primary/90">
               <Save className="mr-2 h-4 w-4" />
               Save Profile
             </Button>
@@ -86,7 +98,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="email-notifications">Email Notifications</Label>
-                <p className="text-sm text-gray-600">Receive updates via email</p>
+                <p className="text-sm text-muted-foreground">
+                  Receive updates via email
+                </p>
               </div>
               <Switch id="email-notifications" defaultChecked />
             </div>
@@ -96,7 +110,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="deal-updates">Deal Updates</Label>
-                <p className="text-sm text-gray-600">Pipeline stage changes</p>
+                <p className="text-sm text-muted-foreground">
+                  Pipeline stage changes
+                </p>
               </div>
               <Switch id="deal-updates" defaultChecked />
             </div>
@@ -104,7 +120,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="commission-alerts">Commission Alerts</Label>
-                <p className="text-sm text-gray-600">Status updates on submissions</p>
+                <p className="text-sm text-muted-foreground">
+                  Status updates on submissions
+                </p>
               </div>
               <Switch id="commission-alerts" defaultChecked />
             </div>
@@ -112,7 +130,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="ai-insights">AI Insights</Label>
-                <p className="text-sm text-gray-600">Weekly analysis reports</p>
+                <p className="text-sm text-muted-foreground">
+                  Weekly analysis reports
+                </p>
               </div>
               <Switch id="ai-insights" />
             </div>
@@ -120,7 +140,9 @@ export default function Settings() {
             <Separator />
 
             <div>
-              <Label htmlFor="notification-frequency">Notification Frequency</Label>
+              <Label htmlFor="notification-frequency">
+                Notification Frequency
+              </Label>
               <Select defaultValue="daily">
                 <SelectTrigger>
                   <SelectValue />
@@ -164,12 +186,17 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="two-factor">Two-Factor Authentication</Label>
-                <p className="text-sm text-gray-600">Add extra security to your account</p>
+                <p className="text-sm text-muted-foreground">
+                  Add extra security to your account
+                </p>
               </div>
               <Switch id="two-factor" />
             </div>
 
-            <Button variant="outline" className="w-full bg-transparent">
+            <Button
+              variant="outline"
+              className="w-full bg-transparent hover:bg-accent"
+            >
               Update Password
             </Button>
           </CardContent>
@@ -200,7 +227,21 @@ export default function Settings() {
             </div>
 
             <div>
-              <Label htmlFor="calendar-sync">Calendar Sync</Label>
+              <Label htmlFor="email-provider">Email Provider</Label>
+              <Select defaultValue="outlook">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="outlook">Microsoft Outlook</SelectItem>
+                  <SelectItem value="gmail">Gmail</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="calendar-integration">Calendar Integration</Label>
               <Select defaultValue="outlook">
                 <SelectTrigger>
                   <SelectValue />
@@ -208,27 +249,21 @@ export default function Settings() {
                 <SelectContent>
                   <SelectItem value="outlook">Microsoft Outlook</SelectItem>
                   <SelectItem value="google">Google Calendar</SelectItem>
+                  <SelectItem value="apple">Apple Calendar</SelectItem>
                   <SelectItem value="none">None</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="auto-sync">Auto-sync Data</Label>
-                <p className="text-sm text-gray-600">Automatically sync with connected systems</p>
-              </div>
-              <Switch id="auto-sync" defaultChecked />
-            </div>
-
-            <Button variant="outline" className="w-full bg-transparent">
+            <Button
+              variant="outline"
+              className="w-full bg-transparent hover:bg-accent"
+            >
               Test Connections
             </Button>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

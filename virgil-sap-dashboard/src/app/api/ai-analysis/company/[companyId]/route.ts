@@ -150,7 +150,7 @@ Generate ONLY the recommendedSolutions array for this company. For each SAP modu
 - businessImpact (string)
 - riskMitigation (array)
 - successMetrics (array)
-- moduleAnalysisContext (MUST be 300+ characters, 3+ paragraphs with detailed analysis covering: strategic fit, implementation considerations, competitive advantages, risk factors, and expected outcomes. Reference specific company data, industry context, and business challenges. Format with clear paragraph breaks using double line breaks.)
+- moduleAnalysisContext (MUST be 500+ characters, 4+ paragraphs with comprehensive analysis covering: strategic alignment with company goals, detailed implementation roadmap, competitive positioning vs alternatives, risk assessment and mitigation strategies, expected business outcomes and ROI drivers, integration challenges and solutions, change management considerations, and long-term strategic value. Reference specific company data, industry benchmarks, uploaded documents, and business challenges. Format with clear paragraph breaks using double line breaks.)
 
 All numeric projections (estimatedROI, estimatedCostMin, estimatedCostMax, etc.) must be uniquely calculated for this company, using the provided company profile, uploaded files, and deal pipeline data. Do NOT use default, placeholder, or repeated values. Each number must be justified by the data and context provided above.
 
@@ -275,7 +275,7 @@ ${sapProducts
       if (
         !sol.moduleAnalysisContext ||
         typeof sol.moduleAnalysisContext !== "string" ||
-        sol.moduleAnalysisContext.length < 300
+        sol.moduleAnalysisContext.length < 500
       )
         incomplete = true;
     }
@@ -808,25 +808,31 @@ function createAdvancedFallbackAnalysis(
 function validateAdvancedAnalysis(analysis: any, company: any) {
   if (!analysis) analysis = {};
 
-  const sections = [
-    "companyProfileAnalysis",
-    "businessContextAnalysis",
-    "aiAnalysisMethodology",
-    "riskFactors",
-    "businessCase",
-  ];
+  // Provide default values for missing sections
+  if (!analysis.companyProfileAnalysis) {
+    analysis.companyProfileAnalysis = `No detailed company profile analysis available for ${company.name}.`;
+  }
 
-  for (const section of sections) {
-    if (!analysis[section]) {
-      analysis[section] = createAdvancedFallbackAnalysis(
-        company,
-        [],
-        0,
-        0,
-        [],
-        []
-      )[section];
-    }
+  if (!analysis.businessContextAnalysis) {
+    analysis.businessContextAnalysis = `No business context analysis available for ${company.name}.`;
+  }
+
+  if (!analysis.aiAnalysisMethodology) {
+    analysis.aiAnalysisMethodology = `No AI analysis methodology details available for ${company.name}.`;
+  }
+
+  if (!analysis.riskFactors || !Array.isArray(analysis.riskFactors)) {
+    analysis.riskFactors = [];
+  }
+
+  if (!analysis.businessCase) {
+    analysis.businessCase = {
+      totalInvestment: null,
+      projectedSavings: null,
+      paybackPeriod: null,
+      netPresentValue: null,
+      riskAdjustedROI: null,
+    };
   }
 
   return analysis;

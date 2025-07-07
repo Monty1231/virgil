@@ -21,17 +21,17 @@ interface Company {
 const getStageColor = (stage: string) => {
   switch (stage) {
     case "Discovery":
-      return "bg-blue-100 text-blue-800"
+      return "bg-primary/10 text-primary border-primary/20"
     case "Proposal":
-      return "bg-yellow-100 text-yellow-800"
+      return "bg-secondary text-secondary-foreground border-secondary/20"
     case "Demo":
-      return "bg-purple-100 text-purple-800"
+      return "bg-accent text-accent-foreground border-accent/20"
     case "Negotiation":
-      return "bg-orange-100 text-orange-800"
+      return "bg-muted text-muted-foreground border-muted/20"
     case "Closed-Won":
-      return "bg-green-100 text-green-800"
+      return "bg-green-100 text-green-800 border-green-200"
     default:
-      return "bg-gray-100 text-gray-800"
+      return "bg-muted text-muted-foreground border-muted/20"
   }
 }
 
@@ -148,8 +148,8 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600">Loading your sales data...</p>
+              <h1 className="text-heading text-foreground">Dashboard</h1>
+              <p className="text-caption text-muted-foreground">Loading your sales data...</p>
             </div>
           </div>
         </div>
@@ -158,8 +158,8 @@ export default function Dashboard() {
             <Card key={i}>
               <CardContent className="p-6">
                 <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-muted rounded w-1/2"></div>
                 </div>
               </CardContent>
             </Card>
@@ -175,8 +175,8 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <SidebarTrigger />
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600">Welcome back! Here's your sales overview.</p>
+            <h1 className="text-heading text-foreground">Dashboard</h1>
+            <p className="text-caption text-muted-foreground">Welcome back! Here's your sales overview.</p>
           </div>
         </div>
       </div>
@@ -185,45 +185,45 @@ export default function Dashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Pipeline Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pipeline Value</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{formatCurrency(metrics.totalPipelineValue)}</div>
-            <p className="text-xs text-gray-500">Active opportunities</p>
+            <div className="text-2xl font-bold text-foreground">{formatCurrency(metrics.totalPipelineValue)}</div>
+            <p className="text-xs text-muted-foreground">Active opportunities</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Active Deals</CardTitle>
-            <Target className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Deals</CardTitle>
+            <Target className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.activeDeals}</div>
-            <p className="text-xs text-gray-500">In pipeline</p>
+            <div className="text-2xl font-bold text-foreground">{metrics.activeDeals}</div>
+            <p className="text-xs text-muted-foreground">In pipeline</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Closed Won</CardTitle>
-            <Users className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Closed Won</CardTitle>
+            <Users className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.closedWonCount}</div>
-            <p className="text-xs text-purple-600">{formatCurrency(metrics.closedWonValue)} total value</p>
+            <div className="text-2xl font-bold text-foreground">{metrics.closedWonCount}</div>
+            <p className="text-xs text-green-600">{formatCurrency(metrics.closedWonValue)} total value</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Win Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Win Rate</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.winRate}%</div>
-            <p className="text-xs text-gray-500">Overall conversion</p>
+            <div className="text-2xl font-bold text-foreground">{metrics.winRate}%</div>
+            <p className="text-xs text-muted-foreground">Overall conversion</p>
           </CardContent>
         </Card>
       </div>
@@ -231,23 +231,23 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-gray-900">Quick Actions</CardTitle>
+          <CardTitle className="text-foreground">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
-            <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Button asChild className="bg-primary hover:bg-primary/90">
               <Link href="/new-account">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add New Account
               </Link>
             </Button>
-            <Button asChild variant="outline" className="border-gray-300 bg-transparent">
+            <Button asChild variant="outline" className="border-border bg-transparent hover:bg-accent">
               <Link href="/decks">
                 <FileText className="mr-2 h-4 w-4" />
                 Generate Deck
               </Link>
             </Button>
-            <Button asChild variant="outline" className="border-gray-300 bg-transparent">
+            <Button asChild variant="outline" className="border-border bg-transparent hover:bg-accent">
               <Link href="/commissions">
                 <DollarSign className="mr-2 h-4 w-4" />
                 Submit Commission
@@ -260,13 +260,13 @@ export default function Dashboard() {
       {/* Active Opportunities */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-gray-900">Active Opportunities</CardTitle>
+          <CardTitle className="text-foreground">Active Opportunities</CardTitle>
         </CardHeader>
         <CardContent>
           {recentActiveDeals.length === 0 ? (
             <div className="text-center py-8">
-              <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No active deals yet</p>
+              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">No active deals yet</p>
               <Button asChild>
                 <Link href="/pipeline">
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -279,13 +279,13 @@ export default function Dashboard() {
               {recentActiveDeals.map((deal) => (
                 <div
                   key={deal.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <Building2 className="h-8 w-8 text-gray-400" />
+                    <Building2 className="h-8 w-8 text-muted-foreground" />
                     <div>
-                      <h3 className="font-medium text-gray-900">{deal.deal_name || "Unnamed Deal"}</h3>
-                      <p className="text-sm text-gray-600">
+                      <h3 className="font-medium text-foreground">{deal.deal_name || "Unnamed Deal"}</h3>
+                      <p className="text-sm text-muted-foreground">
                         {deal.company_name || "Unknown Company"} • AE: {deal.ae_name || "Unassigned"}
                       </p>
                     </div>
@@ -293,8 +293,8 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4">
                     <Badge className={getStageColor(deal.stage)}>{deal.stage}</Badge>
                     <div className="text-right">
-                      <p className="font-medium text-gray-900">{formatCurrency(deal.deal_value)}</p>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                      <p className="font-medium text-foreground">{formatCurrency(deal.deal_value)}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {formatLastActivity(deal.last_activity)}
                       </p>
@@ -305,7 +305,7 @@ export default function Dashboard() {
             </div>
           )}
           <div className="mt-4">
-            <Button asChild variant="outline" className="w-full bg-transparent">
+            <Button asChild variant="outline" className="w-full bg-transparent hover:bg-accent">
               <Link href="/pipeline">View Full Pipeline</Link>
             </Button>
           </div>
@@ -315,14 +315,14 @@ export default function Dashboard() {
       {/* Companies Overview */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-gray-900">Companies in Database</CardTitle>
+          <CardTitle className="text-foreground">Companies in Database</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-bold text-gray-900">{companies.length}</div>
-            <Building2 className="h-8 w-8 text-gray-400" />
+            <div className="text-2xl font-bold text-foreground">{companies.length}</div>
+            <Building2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="text-sm text-gray-600 mb-4">Total companies in your database ready for analysis</p>
+          <p className="text-sm text-muted-foreground mb-4">Total companies in your database ready for analysis</p>
           <div className="flex gap-2">
             <Button asChild size="sm">
               <Link href="/new-account">Add Company</Link>

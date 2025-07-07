@@ -470,15 +470,15 @@ export default function Analyzer() {
   const getFitColor = (fit: string) => {
     switch (fit) {
       case "Excellent":
-        return "bg-emerald-100 text-emerald-800";
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
       case "High":
-        return "bg-indigo-100 text-indigo-800";
+        return "bg-primary/10 text-primary border-primary/20";
       case "Medium":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-100 text-amber-800 border-amber-200";
       case "Low":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 border-red-200";
       default:
-        return "bg-slate-100 text-slate-800";
+        return "bg-muted text-muted-foreground border-muted/20";
     }
   };
 
@@ -519,10 +519,10 @@ export default function Analyzer() {
         <div className="flex items-center gap-4">
           <SidebarTrigger />
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-heading text-foreground">
               AI-Powered Fit & Benefit Analyzer
             </h1>
-            <p className="text-slate-700">
+            <p className="text-caption text-muted-foreground">
               Comprehensive SAP solution analysis with business case development
             </p>
           </div>
@@ -532,12 +532,12 @@ export default function Analyzer() {
             onClick={() => setUseSimpleRoute(!useSimpleRoute)}
             variant="outline"
             size="sm"
-            className="bg-transparent"
+            className="bg-transparent hover:bg-accent"
           >
             <Bug className="mr-2 h-4 w-4" />
             {useSimpleRoute ? "Use Full AI" : "Use Simple Test"}
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-700">
+          <Button className="bg-primary hover:bg-primary/90">
             <Download className="mr-2 h-4 w-4" />
             Export Report
           </Button>
@@ -546,14 +546,14 @@ export default function Analyzer() {
 
       {/* Debug Info */}
       {debugInfo && (
-        <Card className="bg-slate-50 border border-slate-200">
+        <Card className="bg-muted border border-border">
           <CardHeader>
-            <CardTitle className="text-sm text-slate-700">
+            <CardTitle className="text-sm text-muted-foreground">
               Debug Information
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs text-slate-600 space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1">
               <p>
                 <strong>Environment:</strong> OpenAI Key:{" "}
                 {debugInfo.environment?.hasOpenAI ? "✅" : "❌"}, Database:{" "}
@@ -578,10 +578,10 @@ export default function Analyzer() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-indigo-600" />
+            <Brain className="h-5 w-5 text-primary" />
             Select Company for Comprehensive AI Analysis
             {useSimpleRoute && (
-              <Badge className="bg-amber-100 text-amber-800 ml-2">
+              <Badge className="bg-amber-100 text-amber-800 border-amber-200 ml-2">
                 <Bug className="h-3 w-3 mr-1" />
                 Test Mode
               </Badge>
@@ -590,7 +590,7 @@ export default function Analyzer() {
         </CardHeader>
         <CardContent>
           {loading && (
-            <div className="flex items-center gap-2 text-indigo-600 mb-4">
+            <div className="flex items-center gap-2 text-primary mb-4">
               <RefreshCw className="h-4 w-4 animate-spin" />
               <span>Loading companies...</span>
             </div>
@@ -608,7 +608,7 @@ export default function Analyzer() {
                 onClick={fetchCompanies}
                 variant="outline"
                 size="sm"
-                className="mt-2 bg-transparent"
+                className="mt-2 bg-transparent hover:bg-accent"
               >
                 <RefreshCw className="mr-2 h-3 w-3" />
                 Retry
@@ -637,10 +637,10 @@ export default function Analyzer() {
                 {companies.length === 0 ? (
                   <SelectItem value="no-companies" disabled>
                     <div className="text-center py-2">
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-muted-foreground">
                         No companies found
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         Create companies in "New Account" page
                       </p>
                     </div>
@@ -650,7 +650,7 @@ export default function Analyzer() {
                     <SelectItem key={company.id} value={company.id.toString()}>
                       <div className="flex flex-col py-1">
                         <span className="font-medium">{company.name}</span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground">
                           {company.industry} • {company.company_size} •{" "}
                           {company.region}
                         </span>
@@ -673,7 +673,7 @@ export default function Analyzer() {
                 <Button
                   onClick={() => generateAnalysis(selectedCompanyId)}
                   disabled={analyzing}
-                  className="bg-indigo-600 hover:bg-indigo-700"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   {analyzing ? (
                     <>
@@ -691,7 +691,7 @@ export default function Analyzer() {
                   <Button
                     onClick={() => setActiveTab("history")}
                     variant="outline"
-                    className="bg-transparent"
+                    className="bg-transparent hover:bg-accent"
                   >
                     <History className="mr-2 h-4 w-4" />
                     View Previous ({previousAnalyses.length})
