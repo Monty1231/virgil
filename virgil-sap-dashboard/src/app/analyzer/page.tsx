@@ -280,6 +280,7 @@ export default function Analyzer() {
       if (response.ok) {
         const data = await response.json();
         console.log("📊 Analyzer: Previous analyses raw data:", data);
+        console.log("📊 Analyzer: Number of analyses received:", Array.isArray(data) ? data.length : 0);
 
         if (Array.isArray(data)) {
           // Enhanced data processing for the new analysis structure
@@ -327,6 +328,9 @@ export default function Analyzer() {
                 new Date(a.created_at).getTime()
             );
 
+          console.log("📊 Analyzer: Valid analyses after processing:", validAnalyses.length);
+          console.log("📊 Analyzer: Analysis IDs:", validAnalyses.map(a => a.id));
+
           setPreviousAnalyses(validAnalyses);
           console.log(
             "📊 Analyzer: Set",
@@ -334,10 +338,11 @@ export default function Analyzer() {
             "previous analyses"
           );
         } else {
+          console.log("📊 Analyzer: Data is not an array:", typeof data);
           setPreviousAnalyses([]);
         }
       } else {
-        console.log("📊 Analyzer: No previous analyses found or API error");
+        console.log("📊 Analyzer: API response not ok:", response.status, response.statusText);
         setPreviousAnalyses([]);
       }
     } catch (error) {
@@ -434,7 +439,16 @@ export default function Analyzer() {
       setAnalysisData(data.analysis);
 
       // Refresh previous analyses to include the new one
-      fetchPreviousAnalyses(companyId);
+      // Add a small delay to ensure database transaction is committed
+      setTimeout(() => {
+        fetchPreviousAnalyses(companyId);
+      }, 1000);
+
+      // Also try again after 3 seconds in case the first attempt fails
+      setTimeout(() => {
+        console.log("🤖 Analyzer: Retrying fetch of previous analyses...");
+        fetchPreviousAnalyses(companyId);
+      }, 3000);
     } catch (error) {
       console.error("🤖 Analyzer: ❌ Analysis error:", error);
       setAnalysisError(

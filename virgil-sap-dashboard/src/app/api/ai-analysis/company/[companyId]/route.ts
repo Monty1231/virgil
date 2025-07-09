@@ -700,6 +700,8 @@ Return the full analysis as a JSON object, including the provided recommendedSol
         },
       };
 
+      console.log("🤖 Advanced AI Analysis: About to insert analysis for company ID:", companyId);
+
       const insertResult = await sql.query(
         `INSERT INTO ai_analyses (
           company_id, 
@@ -722,15 +724,36 @@ Return the full analysis as a JSON object, including the provided recommendedSol
         ]
       );
 
+      const insertedId = insertResult.rows[0]?.id;
       console.log(
         "🤖 Advanced AI Analysis: ✅ Analysis stored with ID:",
-        insertResult.rows[0]?.id
+        insertedId
       );
-    } catch (dbError) {
+
+      // Verify the insert worked by doing a quick check
+      const verifyResult = await sql.query(
+        `SELECT id FROM ai_analyses WHERE id = $1`,
+        [insertedId]
+      );
+
+      if (verifyResult.rows.length === 0) {
+        console.error("🤖 Advanced AI Analysis: ❌ Insert verification failed - record not found");
+      } else {
+        console.log("🤖 Advanced AI Analysis: ✅ Insert verification successful");
+      }
+
+    } catch (dbError: any) {
       console.error(
         "🤖 Advanced AI Analysis: ❌ Database storage failed:",
         dbError
       );
+      console.error("🤖 Advanced AI Analysis: ❌ Database error details:", {
+        message: dbError.message,
+        code: dbError.code,
+        detail: dbError.detail,
+      });
+      // Don't fail the entire request if database storage fails
+      // But log it for debugging
     }
 
     return NextResponse.json({
