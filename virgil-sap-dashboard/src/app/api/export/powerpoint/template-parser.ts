@@ -442,122 +442,135 @@ const parsePPTXDesign = async (
 
     let selectedStyle: keyof typeof templateStyles = "professional";
 
-    // Analyze the extracted colors to determine template style
-    if (Object.keys(extractedColors).length > 0) {
-      // We have actual colors from template - analyze them
-      const allColors = Object.values(extractedColors).map((c) =>
-        c.toLowerCase()
-      );
-
-      console.log("Analyzing extracted colors:", allColors);
-
-      // Check for specific color patterns
-      if (
-        allColors.some(
-          (c) =>
-            c.includes("f0f9ff") || c.includes("e0f2fe") || c.includes("dbeafe")
-        )
-      ) {
-        selectedStyle = "organic";
-      } else if (
-        allColors.some(
-          (c) =>
-            c.includes("3b82f6") || c.includes("1e40af") || c.includes("2563eb")
-        )
-      ) {
-        selectedStyle = "modern";
-      } else if (
-        allColors.some(
-          (c) =>
-            c.includes("1e3a5f") || c.includes("1e293b") || c.includes("0f172a")
-        )
-      ) {
-        selectedStyle = "professional";
-      } else if (
-        allColors.some(
-          (c) =>
-            c.includes("7c3aed") || c.includes("a855f7") || c.includes("9333ea")
-        )
-      ) {
-        selectedStyle = "marketing";
-      } else if (
-        allColors.some(
-          (c) =>
-            c.includes("374151") || c.includes("6b7280") || c.includes("4b5563")
-        )
-      ) {
-        selectedStyle = "corporate";
-      } else if (
-        allColors.some(
-          (c) =>
-            c.includes("ffffff") || c.includes("f8fafc") || c.includes("f1f5f9")
-        )
-      ) {
-        selectedStyle = "clean";
-      } else {
-        // Use the most prominent non-white color to determine style
-        const prominentColor = allColors.find(
-          (c) => c !== "ffffff" && c !== "000000"
+    // First, check filename for specific design types that should override color analysis
+    if (fileName.includes("organic") || fileName.includes("natural") || fileName.includes("soft")) {
+      selectedStyle = "organic";
+    } else if (fileName.includes("marketing") || fileName.includes("plan") || fileName.includes("shapes") || fileName.includes("creative")) {
+      selectedStyle = "marketing";
+    } else if (fileName.includes("modern") || fileName.includes("contemporary") || fileName.includes("minimal")) {
+      selectedStyle = "modern";
+    } else if (fileName.includes("corporate") || fileName.includes("business") || fileName.includes("professional")) {
+      selectedStyle = "corporate";
+    } else if (fileName.includes("clean") || fileName.includes("simple") || fileName.includes("white")) {
+      selectedStyle = "clean";
+    } else {
+      // Analyze the extracted colors to determine template style
+      if (Object.keys(extractedColors).length > 0) {
+        // We have actual colors from template - analyze them
+        const allColors = Object.values(extractedColors).map((c) =>
+          c.toLowerCase()
         );
-        if (prominentColor) {
-          // Analyze the color to determine style
-          const r = parseInt(prominentColor.substring(0, 2), 16);
-          const g = parseInt(prominentColor.substring(2, 4), 16);
-          const b = parseInt(prominentColor.substring(4, 6), 16);
 
-          // Simple color analysis
-          if (b > r && b > g) {
-            selectedStyle = "modern"; // Blue dominant
-          } else if (r > g && r > b) {
-            selectedStyle = "marketing"; // Red dominant
-          } else if (g > r && g > b) {
-            selectedStyle = "organic"; // Green dominant
-          } else {
-            selectedStyle = "professional"; // Neutral
+        console.log("Analyzing extracted colors:", allColors);
+
+        // Check for specific color patterns
+        if (
+          allColors.some(
+            (c) =>
+              c.includes("f0f9ff") || c.includes("e0f2fe") || c.includes("dbeafe")
+          )
+        ) {
+          selectedStyle = "organic";
+        } else if (
+          allColors.some(
+            (c) =>
+              c.includes("3b82f6") || c.includes("1e40af") || c.includes("2563eb")
+          )
+        ) {
+          selectedStyle = "modern";
+        } else if (
+          allColors.some(
+            (c) =>
+              c.includes("1e3a5f") || c.includes("1e293b") || c.includes("0f172a")
+          )
+        ) {
+          selectedStyle = "professional";
+        } else if (
+          allColors.some(
+            (c) =>
+              c.includes("7c3aed") || c.includes("a855f7") || c.includes("9333ea")
+          )
+        ) {
+          selectedStyle = "marketing";
+        } else if (
+          allColors.some(
+            (c) =>
+              c.includes("374151") || c.includes("6b7280") || c.includes("4b5563")
+          )
+        ) {
+          selectedStyle = "corporate";
+        } else if (
+          allColors.some(
+            (c) =>
+              c.includes("ffffff") || c.includes("f8fafc") || c.includes("f1f5f9")
+          )
+        ) {
+          selectedStyle = "clean";
+        } else {
+          // Use the most prominent non-white color to determine style
+          const prominentColor = allColors.find(
+            (c) => c !== "ffffff" && c !== "000000"
+          );
+          if (prominentColor) {
+            // Analyze the color to determine style
+            const r = parseInt(prominentColor.substring(0, 2), 16);
+            const g = parseInt(prominentColor.substring(2, 4), 16);
+            const b = parseInt(prominentColor.substring(4, 6), 16);
+
+            // Simple color analysis
+            if (b > r && b > g) {
+              selectedStyle = "modern"; // Blue dominant
+            } else if (r > g && r > b) {
+              selectedStyle = "marketing"; // Red dominant
+            } else if (g > r && g > b) {
+              selectedStyle = "organic"; // Green dominant
+            } else {
+              selectedStyle = "professional"; // Neutral
+            }
           }
         }
-      }
-    } else {
-      // Fallback to filename analysis
-      if (
-        fileName.includes("organic") ||
-        fileName.includes("natural") ||
-        fileName.includes("soft")
-      ) {
-        selectedStyle = "organic";
-      } else if (
-        fileName.includes("marketing") ||
-        fileName.includes("plan") ||
-        fileName.includes("shapes") ||
-        fileName.includes("creative")
-      ) {
-        selectedStyle = "marketing";
-      } else if (
-        fileName.includes("modern") ||
-        fileName.includes("contemporary") ||
-        fileName.includes("minimal")
-      ) {
-        selectedStyle = "modern";
-      } else if (
-        fileName.includes("corporate") ||
-        fileName.includes("business") ||
-        fileName.includes("professional")
-      ) {
-        selectedStyle = "corporate";
-      } else if (
-        fileName.includes("clean") ||
-        fileName.includes("simple") ||
-        fileName.includes("white")
-      ) {
-        selectedStyle = "clean";
       } else {
-        // Size-based selection
-        if (fileSize > 5000000) {
+        // Fallback to filename analysis
+        if (
+          fileName.includes("organic") ||
+          fileName.includes("natural") ||
+          fileName.includes("soft")
+        ) {
+          selectedStyle = "organic";
+        } else if (
+          fileName.includes("marketing") ||
+          fileName.includes("plan") ||
+          fileName.includes("shapes") ||
+          fileName.includes("creative")
+        ) {
           selectedStyle = "marketing";
-        } else if (fileSize > 2000000) {
+        } else if (
+          fileName.includes("modern") ||
+          fileName.includes("contemporary") ||
+          fileName.includes("minimal")
+        ) {
           selectedStyle = "modern";
-        } else {
+        } else if (
+          fileName.includes("corporate") ||
+          fileName.includes("business") ||
+          fileName.includes("professional")
+        ) {
+          selectedStyle = "corporate";
+        } else if (
+          fileName.includes("clean") ||
+          fileName.includes("simple") ||
+          fileName.includes("white")
+        ) {
           selectedStyle = "clean";
+        } else {
+          // Size-based selection
+          if (fileSize > 5000000) {
+            selectedStyle = "marketing";
+          } else if (fileSize > 2000000) {
+            selectedStyle = "modern";
+          } else {
+            selectedStyle = "clean";
+          }
         }
       }
     }
@@ -588,8 +601,9 @@ const parsePPTXDesign = async (
       // Adjust based on file characteristics
       titleFontSize: baseStyle.titleFontSize + (fileSize > 3000000 ? 2 : 0),
       bodyFontSize: baseStyle.bodyFontSize + (fileSize > 3000000 ? 1 : 0),
-      hasShapes: fileSize > 2000000,
-      hasImages: fileSize > 4000000,
+      // Set hasShapes based on template design type, not just file size
+      hasShapes: baseStyle.hasShapes || fileSize > 2000000,
+      hasImages: baseStyle.hasImages || fileSize > 4000000,
     };
 
     console.log(

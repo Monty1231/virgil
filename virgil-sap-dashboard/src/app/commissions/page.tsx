@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { saveAs } from "file-saver";
+import { SalesforceExportDialog } from "@/components/salesforce-export-dialog";
 
 const mockSubmissions = [
   {
@@ -610,17 +611,26 @@ export default function Commissions() {
                           Edit
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="mt-2 ml-2"
-                        onClick={() => handleExportToSalesforce(submission)}
-                        disabled={exportingId === submission.id}
-                      >
-                        {exportingId === submission.id
-                          ? "Exporting..."
-                          : "Export to Salesforce"}
-                      </Button>
+                      <SalesforceExportDialog
+                        commissionData={submission}
+                        onExportComplete={(result) => {
+                          console.log("Export completed:", result);
+                          // Optionally refresh the submissions list
+                          // fetchSubmissions();
+                        }}
+                        trigger={
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="mt-2 ml-2"
+                            disabled={exportingId === submission.id}
+                          >
+                            {exportingId === submission.id
+                              ? "Exporting..."
+                              : "Export to Salesforce"}
+                          </Button>
+                        }
+                      />
                     </div>
                   </div>
                 ))
