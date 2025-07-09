@@ -53,7 +53,17 @@ export async function POST(request: Request) {
       ]
     );
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    // Fetch the joined row with deal_name
+    const inserted = result.rows[0];
+    const joined = await sql.query(
+      `SELECT cs.*, d.deal_name
+       FROM commission_submissions cs
+       LEFT JOIN deals d ON cs.deal_id = d.id
+       WHERE cs.id = $1`,
+      [inserted.id]
+    );
+
+    return NextResponse.json(joined.rows[0], { status: 201 });
   } catch (error) {
     console.error("Error creating commission submission:", error);
     return NextResponse.json(

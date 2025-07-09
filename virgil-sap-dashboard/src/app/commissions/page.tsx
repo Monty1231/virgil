@@ -139,6 +139,7 @@ function exportCommissionsToCsv(submissions: any[]) {
 
 export default function Commissions() {
   const [formData, setFormData] = useState({
+    dealId: "", // <-- add this
     dealName: "",
     clientName: "",
     dealValue: "",
@@ -151,29 +152,46 @@ export default function Commissions() {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);
 
-  const [closedDeals] = useState([
-    {
-      id: 101,
-      name: "Acme Corp S/4HANA",
-      value: 500000,
-      ae: "Sarah Johnson",
-      closeDate: "2024-01-15",
-    },
-    {
-      id: 102,
-      name: "Beta Retail Cloud",
-      value: 320000,
-      ae: "Mike Chen",
-      closeDate: "2024-01-10",
-    },
-    {
-      id: 103,
-      name: "Gamma Analytics",
-      value: 180000,
-      ae: "Emily Davis",
-      closeDate: "2024-01-05",
-    },
-  ]);
+  // Remove the hardcoded closedDeals array
+  // const [closedDeals] = useState([
+  //   {
+  //     id: 101,
+  //     name: "Acme Corp S/4HANA",
+  //     value: 500000,
+  //     ae: "Sarah Johnson",
+  //     closeDate: "2024-01-15",
+  //   },
+  //   {
+  //     id: 102,
+  //     name: "Beta Retail Cloud",
+  //     value: 320000,
+  //     ae: "Mike Chen",
+  //     closeDate: "2024-01-10",
+  //   },
+  //   {
+  //     id: 103,
+  //     name: "Gamma Analytics",
+  //     value: 180000,
+  //     ae: "Emily Davis",
+  //     closeDate: "2024-01-05",
+  //   },
+  // ]);
+
+  // Fetch real deals from the backend
+  const [closedDeals, setClosedDeals] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchDeals = async () => {
+      try {
+        const res = await fetch("/api/deals");
+        if (!res.ok) throw new Error("Failed to fetch deals");
+        const data = await res.json();
+        setClosedDeals(data);
+      } catch (err) {
+        setClosedDeals([]);
+      }
+    };
+    fetchDeals();
+  }, []);
 
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [exportingId, setExportingId] = useState<number | null>(null);
@@ -208,19 +226,25 @@ export default function Commissions() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.dealId) {
+      alert("Please select a deal before submitting.");
+      return;
+    }
     try {
       const commissionAmount = calculateCommission();
+      const payload = {
+        deal_id: formData.dealId,
+        submitted_by: 1, // TODO: Replace with real user ID
+        deal_value: Number.parseFloat(formData.dealValue) || 0,
+        commission_rate: Number.parseFloat(formData.commissionRate) || 0,
+        commission_amount: commissionAmount,
+        notes: formData.notes,
+      };
+      console.log("Submitting commission payload:", payload);
       const response = await fetch("/api/commissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          deal_id: 1, // TODO: Replace with real deal ID
-          submitted_by: 1, // TODO: Replace with real user ID
-          deal_value: Number.parseFloat(formData.dealValue) || 0,
-          commission_rate: Number.parseFloat(formData.commissionRate) || 0,
-          commission_amount: commissionAmount,
-          notes: formData.notes,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -229,6 +253,7 @@ export default function Commissions() {
       }
       alert("Commission submitted successfully!");
       setFormData({
+        dealId: "",
         dealName: "",
         clientName: "",
         dealValue: "",
@@ -249,7 +274,7 @@ export default function Commissions() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          deal_id: 1, // TODO: Replace with real deal ID
+          deal_id: formData.dealId, // <-- use the selected deal's ID
           submitted_by: 1, // TODO: Replace with real user ID
           deal_value: Number.parseFloat(formData.dealValue) || 0,
           commission_rate: Number.parseFloat(formData.commissionRate) || 0,
@@ -265,6 +290,7 @@ export default function Commissions() {
       }
       alert("Draft saved successfully!");
       setFormData({
+        dealId: "",
         dealName: "",
         clientName: "",
         dealValue: "",
@@ -280,13 +306,14 @@ export default function Commissions() {
 
   const handleEditDraft = (draft: any) => {
     setFormData({
-      dealName: draft.deal_name || "",
+      dealId: draft.deal_id ?? "",
+      dealName: draft.deal_name ?? "",
       clientName: "", // You can enhance this if you have client info
-      dealValue: draft.deal_value?.toString() || "",
-      closeDate: "", // You can enhance this if you have close date info
+      dealValue: draft.deal_value?.toString() ?? "",
+      closeDate: draft.close_date ?? "",
       sapProducts: "",
-      commissionRate: draft.commission_rate?.toString() || "5",
-      notes: draft.notes || "",
+      commissionRate: draft.commission_rate?.toString() ?? "5",
+      notes: draft.notes ?? "",
     });
     setEditingDraftId(draft.id);
   };
@@ -339,7 +366,7 @@ export default function Commissions() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="mb-4 bg-slate-700 hover:bg-slate-800 text-white shadow-sm transition-all duration-200 hover:shadow-md border border-slate-600">
-                  Add Closed Deal
+                  {formData.dealName ? formData.dealName : "Add Closed Deal"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-64" align="start">
@@ -352,23 +379,40 @@ export default function Commissions() {
                       <DropdownMenuItem
                         key={deal.id}
                         onClick={() => {
-                          setFormData({
-                            dealName: deal.name,
-                            clientName: "",
-                            dealValue: deal.value.toString(),
-                            closeDate: deal.closeDate,
-                            sapProducts: "",
-                            commissionRate: "5",
-                            notes: "",
-                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            dealId: deal.id,
+                            dealName: deal.name || deal.deal_name || "",
+                            clientName: deal.company_name || "",
+                            dealValue: (
+                              deal.value ??
+                              deal.deal_value ??
+                              0
+                            ).toString(),
+                            closeDate:
+                              deal.closeDate || deal.expected_close_date || "",
+                            sapProducts: deal.sap_product || "",
+                            commissionRate: (
+                              deal.commission_rate ?? "5"
+                            ).toString(),
+                            // notes: keep as-is
+                          }));
+                          console.log("Selected deal:", deal);
                         }}
                         className="flex flex-col items-start p-3 hover:bg-gray-50 rounded cursor-pointer"
                       >
                         <div className="font-medium text-gray-900 text-sm">
-                          {deal.name}
+                          {deal.name || deal.deal_name}
                         </div>
                         <div className="text-xs text-gray-600">
-                          ${deal.value.toLocaleString()} • {deal.ae}
+                          $
+                          {(deal.value !== undefined
+                            ? deal.value
+                            : deal.deal_value !== undefined
+                            ? deal.deal_value
+                            : 0
+                          ).toLocaleString()}{" "}
+                          • {deal.ae || deal.ae_name || ""}
                         </div>
                         <div className="text-xs text-gray-500">
                           Closed: {deal.closeDate}
@@ -384,7 +428,7 @@ export default function Commissions() {
                 <Label htmlFor="dealName">Deal Name</Label>
                 <Input
                   id="dealName"
-                  value={formData.dealName}
+                  value={formData.dealName ?? ""}
                   onChange={(e) =>
                     handleInputChange("dealName", e.target.value)
                   }
@@ -397,7 +441,7 @@ export default function Commissions() {
                 <Label htmlFor="clientName">Client Name</Label>
                 <Input
                   id="clientName"
-                  value={formData.clientName}
+                  value={formData.clientName ?? ""}
                   onChange={(e) =>
                     handleInputChange("clientName", e.target.value)
                   }
@@ -412,7 +456,7 @@ export default function Commissions() {
                   <Input
                     id="dealValue"
                     type="number"
-                    value={formData.dealValue}
+                    value={formData.dealValue ?? ""}
                     onChange={(e) =>
                       handleInputChange("dealValue", e.target.value)
                     }
@@ -425,7 +469,7 @@ export default function Commissions() {
                   <Input
                     id="closeDate"
                     type="date"
-                    value={formData.closeDate}
+                    value={formData.closeDate ?? ""}
                     onChange={(e) =>
                       handleInputChange("closeDate", e.target.value)
                     }
@@ -482,7 +526,7 @@ export default function Commissions() {
                 <Label htmlFor="notes">Additional Notes</Label>
                 <Textarea
                   id="notes"
-                  value={formData.notes}
+                  value={formData.notes ?? ""}
                   onChange={(e) => handleInputChange("notes", e.target.value)}
                   placeholder="Any additional details about the deal..."
                   rows={3}
