@@ -15,6 +15,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { User, Bell, Shield, Database, Save } from "lucide-react";
+import { HubSpotIntegration } from "@/components/hubspot-integration";
 
 export default function Settings() {
   return (
@@ -202,30 +203,20 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        {/* HubSpot Integration */}
+        <HubSpotIntegration />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Integration Settings */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5 text-purple-600" />
-              Integrations
+              Other Integrations
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="crm-integration">CRM Integration</Label>
-              <Select defaultValue="salesforce">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="salesforce">Salesforce</SelectItem>
-                  <SelectItem value="hubspot">HubSpot</SelectItem>
-                  <SelectItem value="dynamics">Microsoft Dynamics</SelectItem>
-                  <SelectItem value="none">None</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <div>
               <Label htmlFor="email-provider">Email Provider</Label>
               <Select defaultValue="outlook">
