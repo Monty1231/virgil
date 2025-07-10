@@ -280,7 +280,10 @@ export default function Analyzer() {
       if (response.ok) {
         const data = await response.json();
         console.log("📊 Analyzer: Previous analyses raw data:", data);
-        console.log("📊 Analyzer: Number of analyses received:", Array.isArray(data) ? data.length : 0);
+        console.log(
+          "📊 Analyzer: Number of analyses received:",
+          Array.isArray(data) ? data.length : 0
+        );
 
         if (Array.isArray(data)) {
           // Enhanced data processing for the new analysis structure
@@ -328,8 +331,14 @@ export default function Analyzer() {
                 new Date(a.created_at).getTime()
             );
 
-          console.log("📊 Analyzer: Valid analyses after processing:", validAnalyses.length);
-          console.log("📊 Analyzer: Analysis IDs:", validAnalyses.map(a => a.id));
+          console.log(
+            "📊 Analyzer: Valid analyses after processing:",
+            validAnalyses.length
+          );
+          console.log(
+            "📊 Analyzer: Analysis IDs:",
+            validAnalyses.map((a) => a.id)
+          );
 
           setPreviousAnalyses(validAnalyses);
           console.log(
@@ -342,7 +351,11 @@ export default function Analyzer() {
           setPreviousAnalyses([]);
         }
       } else {
-        console.log("📊 Analyzer: API response not ok:", response.status, response.statusText);
+        console.log(
+          "📊 Analyzer: API response not ok:",
+          response.status,
+          response.statusText
+        );
         setPreviousAnalyses([]);
       }
     } catch (error) {
@@ -837,84 +850,40 @@ export default function Analyzer() {
                               {analysisData.overallFit} Fit
                             </span>
                           </div>
-                        </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Building className="h-4 w-4 text-slate-500" />
-                              <span className="text-sm">
-                                <strong>Industry:</strong>{" "}
-                                {selectedCompany.industry}
-                              </span>
+                          {/* SAP Fit Score Display */}
+                          <div className="ml-auto">
+                            <div className="text-center">
+                              <div className="text-3xl font-bold text-blue-600">
+                                {analysisData.fitScore}%
+                              </div>
+                              <div className="text-xs text-slate-500 font-medium">
+                                SAP Fit Score
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4 text-slate-500" />
-                              <span className="text-sm">
-                                <strong>Size:</strong>{" "}
-                                {selectedCompany.company_size}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4 text-slate-500" />
-                              <span className="text-sm">
-                                <strong>Region:</strong>{" "}
-                                {selectedCompany.region}
-                              </span>
-                            </div>
-                            {selectedCompany.website && (
-                              <div className="flex items-center gap-2">
-                                <Globe className="h-4 w-4 text-slate-500" />
-                                <span className="text-sm">
-                                  <strong>Website:</strong>{" "}
-                                  <a
-                                    href={selectedCompany.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:underline"
-                                  >
-                                    {selectedCompany.website}
-                                  </a>
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            {selectedCompany.budget && (
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-slate-500" />
-                                <span className="text-sm">
-                                  <strong>Budget:</strong>{" "}
-                                  {selectedCompany.budget}
-                                </span>
-                              </div>
-                            )}
-                            {selectedCompany.timeline && (
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-slate-500" />
-                                <span className="text-sm">
-                                  <strong>Timeline:</strong>{" "}
-                                  {selectedCompany.timeline}
-                                </span>
-                              </div>
-                            )}
-                            {selectedCompany.priority && (
-                              <div className="flex items-center gap-2">
-                                <AlertCircle className="h-4 w-4 text-slate-500" />
-                                <span className="text-sm">
-                                  <strong>Priority:</strong>{" "}
-                                  {selectedCompany.priority}
-                                </span>
-                              </div>
-                            )}
                           </div>
                         </div>
 
-                        <Progress
-                          value={analysisData.fitScore}
-                          className="w-full"
-                        />
+                        {/* Progress Bar with Label */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm text-slate-600">
+                            <span>Fit Assessment</span>
+                            <span>{analysisData.fitScore}% Match</span>
+                          </div>
+                          <Progress
+                            value={analysisData.fitScore}
+                            className="w-full h-3"
+                          />
+                          <div className="text-xs text-slate-500 text-center">
+                            {analysisData.fitScore >= 80
+                              ? "Excellent SAP fit"
+                              : analysisData.fitScore >= 60
+                              ? "Good SAP fit"
+                              : analysisData.fitScore >= 40
+                              ? "Moderate SAP fit"
+                              : "Limited SAP fit"}
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
