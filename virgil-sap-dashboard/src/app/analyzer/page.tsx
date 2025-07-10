@@ -1363,14 +1363,14 @@ export default function Analyzer() {
                               </div>
 
                               {/* AI Analysis Context */}
-                              <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200 lg:col-span-2">
+                              <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200 col-span-full">
                                 <h5 className="font-medium text-indigo-700 mb-2 flex items-center gap-2">
                                   <Brain className="h-4 w-4" />
                                   AI Analysis Context
                                 </h5>
                                 <div className="text-sm text-slate-800 space-y-2">
                                   {solution.moduleAnalysisContext ? (
-                                    <div className="mb-2">
+                                    <div className="mb-2 whitespace-pre-line">
                                       {solution.moduleAnalysisContext}
                                     </div>
                                   ) : (

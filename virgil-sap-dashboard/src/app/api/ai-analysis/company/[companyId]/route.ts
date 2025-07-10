@@ -135,38 +135,109 @@ export async function GET(
     });
 
     // STEP 1: Generate recommendedSolutions with all projections
-    const solutionsPrompt = `# CRITICAL: Return ONLY a valid JSON array. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks.
+    const solutionsPrompt = `# CRITICAL: SALES-FOCUSED ANALYSIS REQUIRED
+# IMPORTANT: Write all content from a SALES PERSPECTIVE to convince the client to purchase SAP modules
+# Focus on benefits, ROI, competitive advantages, and value proposition
+# CRITICAL: DO NOT write generic analysis - be specific about each SAP module's unique features and capabilities
+# CRITICAL: Mention the specific SAP module name multiple times in each analysis
+
+Return ONLY a valid JSON array. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks.
 Generate ONLY the recommendedSolutions array for this company. For each SAP module, provide:
 - module (string, must match a real SAP product)
-- fitJustification (5+ sentences, data-driven, reference company data and uploaded files)
+- fitJustification (5+ sentences written from a SALES PERSPECTIVE, emphasizing why this specific SAP module is the best solution for this company's needs, highlighting unique benefits and competitive advantages, reference company data and uploaded files)
 - priority (number)
 - estimatedROI (realistic, nonzero number, e.g., 18.5)
 - timeToValue (realistic string, e.g., "9-15 months")
 - estimatedCostMin (realistic, nonzero number, e.g., 250000)
 - estimatedCostMax (realistic, nonzero number, e.g., 400000)
-- keyBenefits (array)
+- keyBenefits (array of 3+ specific benefits that make this SAP module compelling for this company, written from a SALES PERSPECTIVE)
 - implementationComplexity (string)
 - technicalRequirements (array)
-- businessImpact (string)
-- riskMitigation (array)
-- successMetrics (array)
-- moduleAnalysisContext (MUST be 500+ characters, 4+ paragraphs with comprehensive analysis covering: strategic alignment with company goals, detailed implementation roadmap, competitive positioning vs alternatives, risk assessment and mitigation strategies, expected business outcomes and ROI drivers, integration challenges and solutions, change management considerations, and long-term strategic value. Reference specific company data, industry benchmarks, uploaded documents, and business challenges. Format with clear paragraph breaks using double line breaks.)
+- businessImpact (string written from a SALES PERSPECTIVE, emphasizing the transformative business impact and value this SAP module will deliver)
+- riskMitigation (array of 3+ specific strategies to mitigate implementation risks, emphasizing how SAP's expertise and proven methodologies ensure successful delivery)
+- successMetrics (array of 3+ measurable success metrics that demonstrate the value and ROI of this SAP module for this company)
+- moduleAnalysisContext (MUST be 800+ characters, structured as a formal business report written from a SALES PERSPECTIVE to convince the client to purchase this specific SAP module. CRITICAL: You MUST mention the specific SAP module name at least 5 times and describe its unique features and capabilities in detail. Structure the analysis as a formal report with the following sections: 1) EXECUTIVE SUMMARY - Brief overview of the SAP module's strategic value, 2) BUSINESS CHALLENGES ADDRESSED - How this specific SAP module addresses the company's unique challenges, 3) SOLUTION OVERVIEW - Comprehensive overview of the SAP module's features and capabilities (use 3-4 bullet points for key features), 4) BUSINESS IMPACT & ROI - Detailed discussion of tangible business outcomes and success metrics (use 3-4 bullet points for key metrics), 5) IMPLEMENTATION STRATEGY - Implementation approach with risk mitigation (use 3-4 bullet points for key steps), 6) COMPETITIVE ADVANTAGES - Strategic positioning and competitive differentiation, 7) CONCLUSION - Strategic value and investment justification. Use formal business language with clear section headings in ALL CAPS. Reference specific company data, industry benchmarks, and business challenges. Format with clear section breaks using double line breaks and use bullet points (•) for key lists. DO NOT write generic analysis - be specific about the module's features and benefits.)
 
 All numeric projections (estimatedROI, estimatedCostMin, estimatedCostMax, etc.) must be uniquely calculated for this company, using the provided company profile, uploaded files, and deal pipeline data. Do NOT use default, placeholder, or repeated values. Each number must be justified by the data and context provided above.
+
+# CRITICAL: Each moduleAnalysisContext MUST mention the specific SAP module name at least 5 times and describe its unique features and capabilities in detail. Do NOT write generic analysis that could apply to any module.
 
 Do NOT include a module unless you can provide ALL required fields with real, nonzero, non-null values and detailed justifications. Do NOT include any projections as null, zero, or placeholder. If you cannot estimate a value, use industry logic and the provided data to make a realistic projection.
 
 Return ONLY the array, no extra text. Example:
 [
   {
-    "module": "S/4HANA",
-    "fitJustification": "...",
+    "module": "SAP Customer Experience",
+    "fitJustification": "SAP Customer Experience is the ideal solution for your company's customer relationship challenges. With advanced analytics and personalized engagement capabilities, this module will transform your customer interactions and drive measurable revenue growth. The integrated approach ensures seamless data flow across all customer touchpoints, providing the competitive advantage you need in today's market.",
     "priority": 1,
     "estimatedROI": 22.5,
     "timeToValue": "12-18 months",
     "estimatedCostMin": 500000,
     "estimatedCostMax": 2000000,
-    ...
+    "keyBenefits": [
+      "Advanced customer analytics and insights",
+      "Personalized customer engagement",
+      "Integrated omnichannel experience"
+    ],
+    "businessImpact": "Transform customer relationships and drive 25% revenue growth through personalized engagement and data-driven insights.",
+    "riskMitigation": [
+      "SAP's proven implementation methodology",
+      "Comprehensive change management support",
+      "Dedicated customer success team"
+    ],
+    "successMetrics": [
+      "25% increase in customer retention",
+      "30% reduction in sales cycle time",
+      "40% improvement in customer satisfaction scores"
+    ],
+    "moduleAnalysisContext": "EXECUTIVE SUMMARY
+
+SAP Customer Experience represents a strategic investment opportunity for your organization to transform customer relationship management and drive measurable business growth. This comprehensive SAP module addresses critical business challenges through advanced analytics, real-time engagement capabilities, and integrated omnichannel experiences that deliver significant ROI and competitive differentiation.
+
+
+BUSINESS CHALLENGES ADDRESSED
+
+SAP Customer Experience directly addresses your company's unique business challenges through its sophisticated customer journey mapping and predictive analytics engine. The module transforms customer interactions by enabling anticipation of customer needs and delivery of personalized experiences that significantly reduce sales cycle times and improve customer satisfaction. SAP Customer Experience provides the competitive advantage your organization needs through its integrated omnichannel approach, ensuring seamless data flow across all customer touchpoints.
+
+
+SOLUTION OVERVIEW
+
+The SAP Customer Experience module offers comprehensive features and capabilities that provide significant competitive advantages:
+
+• Advanced AI-powered customer insights and predictive analytics
+• Real-time personalization and customer journey mapping
+• Integrated marketing automation with sophisticated workflows
+• Comprehensive analytics dashboard with real-time visibility
+
+
+BUSINESS IMPACT & ROI
+
+SAP Customer Experience delivers tangible business outcomes and success metrics that demonstrate clear value for your organization:
+
+• 30% increase in customer retention rates
+• 25% reduction in customer acquisition costs
+• 40% improvement in customer satisfaction scores
+• 20% boost in revenue from existing customers through cross-selling
+
+
+IMPLEMENTATION STRATEGY
+
+The implementation approach for SAP Customer Experience is designed to minimize risk and maximize value delivery:
+
+• Cloud-native architecture ensuring rapid deployment and scalability
+• Comprehensive change management framework for successful adoption
+• Dedicated customer success teams for ongoing optimization
+• Full value realization within 12-18 months
+
+
+COMPETITIVE ADVANTAGES
+
+SAP Customer Experience provides the strategic foundation your company needs to maintain competitive positioning and drive sustainable growth in an increasingly digital marketplace. By leveraging the module's advanced capabilities, your organization can differentiate itself through superior customer experiences while achieving the operational efficiency and scalability required for long-term success.
+
+
+CONCLUSION
+
+The SAP Customer Experience module represents a strategic investment that will deliver both immediate business value and long-term competitive advantages. This comprehensive solution addresses your organization's specific challenges while providing the tools and capabilities needed to achieve sustainable growth and market leadership."
   }
 ]
 
@@ -183,6 +254,8 @@ Current Systems: ${
     }
 Budget: ${company.budget || "To be determined based on ROI"}
 Timeline: ${company.timeline || "Flexible based on business needs"}
+
+# SALES CONTEXT: Use this company profile to craft compelling value propositions that address their specific challenges and demonstrate how SAP modules will deliver measurable business value and competitive advantages.
 
 UPLOADED DOCUMENTS AND FILES:
 ${
@@ -275,7 +348,12 @@ ${sapProducts
       if (
         !sol.moduleAnalysisContext ||
         typeof sol.moduleAnalysisContext !== "string" ||
-        sol.moduleAnalysisContext.length < 500
+        sol.moduleAnalysisContext.length < 800 ||
+        !sol.moduleAnalysisContext.includes(sol.module) ||
+        sol.moduleAnalysisContext.toLowerCase().includes("generic") ||
+        sol.moduleAnalysisContext.toLowerCase().includes("any module") ||
+        (sol.moduleAnalysisContext.match(new RegExp(sol.module, "g")) || [])
+          .length < 5
       )
         incomplete = true;
     }
@@ -292,7 +370,7 @@ ${sapProducts
 
     // STEP 1: Generate businessChallenges array with a dedicated prompt
     const businessChallengesPrompt = `# CRITICAL: BUSINESS CHALLENGES (DO NOT OMIT)
-Generate ONLY a businessChallenges array with exactly 1 item. The item must be at least 100 characters and reference company data or industry context. Provide a specific, actionable challenge.
+Generate ONLY a businessChallenges array with exactly 1 item. The item must be at least 100 characters and reference company data or industry context. Provide a specific, actionable challenge that is specific to this company's situation.
 
 # Example:
 "businessChallenges": [
@@ -396,7 +474,9 @@ ${
     }
 
     // STEP 2: Generate the rest of the analysis with enhanced prompts
-    const restPrompt = `# CRITICAL: IN-DEPTH ANALYSIS REQUIRED
+    const restPrompt = `# CRITICAL: SALES-FOCUSED IN-DEPTH ANALYSIS REQUIRED
+# IMPORTANT: Write all content from a SALES PERSPECTIVE to convince the client to purchase SAP solutions
+# Focus on benefits, ROI, competitive advantages, and value proposition
 
 # COMPANY PROFILE ANALYSIS (REQUIRED)
 Generate a comprehensive company profile analysis that MUST:
@@ -408,6 +488,7 @@ Generate a comprehensive company profile analysis that MUST:
   * Growth trajectory and strategic positioning
 - Reference specific company data points
 - Avoid generic statements
+- Emphasize how SAP solutions address their specific challenges
 
 # BUSINESS CONTEXT ANALYSIS (REQUIRED)
 Generate a comprehensive business context analysis that MUST:
@@ -419,6 +500,7 @@ Generate a comprehensive business context analysis that MUST:
   * Strategic opportunities
 - Reference uploaded documents where applicable
 - Include quantitative market data where possible
+- Emphasize how SAP solutions provide competitive advantages in this context
 
 # AI ANALYSIS METHODOLOGY (REQUIRED)
 Generate a detailed AI analysis methodology that MUST:
@@ -442,30 +524,30 @@ Generate a detailed riskFactors array with at least 5 items. Each item MUST incl
 
 # COMPETITIVE ANALYSIS REQUIREMENTS (CRITICAL)
 The competitiveAnalysis object MUST include ALL of the following fields:
-- sapAdvantages (array of 3+ specific advantages SAP has over competitors for this company)
-- competitorComparison (array of 3+ comparisons with major competitors like Oracle, Microsoft, Salesforce)
-- keyDifferentiators (array of 3+ unique differentiators that make SAP the best choice for this company)
+- sapAdvantages (array of 3+ specific advantages SAP has over competitors for this company, written from a SALES PERSPECTIVE)
+- competitorComparison (array of 3+ comparisons with major competitors like Oracle, Microsoft, Salesforce, emphasizing why SAP is superior)
+- keyDifferentiators (array of 3+ unique differentiators that make SAP the best choice for this company, focusing on value proposition)
 
 Example competitiveAnalysis structure:
 {
   "sapAdvantages": [
-    "Industry-specific solutions for [company industry]",
-    "Global support and implementation expertise",
-    "Integrated ecosystem reducing complexity"
+    "Industry-specific solutions for [company industry] with proven ROI",
+    "Global support and implementation expertise ensuring successful delivery",
+    "Integrated ecosystem reducing complexity and total cost of ownership"
   ],
   "competitorComparison": [
-    "SAP vs Oracle: Better industry alignment for [company industry]",
-    "SAP vs Microsoft: More comprehensive ERP capabilities",
-    "SAP vs Salesforce: Deeper financial and operational integration"
+    "SAP vs Oracle: Better industry alignment for [company industry] with superior analytics",
+    "SAP vs Microsoft: More comprehensive ERP capabilities with deeper integration",
+    "SAP vs Salesforce: Deeper financial and operational integration with better scalability"
   ],
   "keyDifferentiators": [
-    "End-to-end business process integration",
-    "Proven track record in [company industry]",
-    "Scalability for future growth needs"
+    "End-to-end business process integration driving measurable business value",
+    "Proven track record in [company industry] with documented success stories",
+    "Scalability for future growth needs with flexible deployment options"
   ]
 }
 
-All competitive analysis must be specific to this company's industry, size, and business challenges.
+All competitive analysis must be specific to this company's industry, size, and business challenges, written to convince them to choose SAP.
 
 # CONTEXT
 You have already generated the following recommendedSolutions for this company (do NOT change them):
@@ -474,7 +556,9 @@ ${JSON.stringify(solutions, null, 2)}
 You have already generated the following businessChallenges for this company (do NOT change them):
 ${JSON.stringify(businessChallenges, null, 2)}
 
-Now generate the rest of the analysis (companyProfileAnalysis, businessContextAnalysis, aiAnalysisMethodology, businessCase, financialAnalysis, implementationRoadmap, competitiveAnalysis, riskFactors, executiveSummary, etc.) as before, referencing the modules, projections, and businessChallenges above. Do NOT repeat or change any numbers in recommendedSolutions or businessChallenges. All top-level projections (businessCase, etc.) must be consistent with the module projections above.
+Now generate the rest of the analysis (companyProfileAnalysis, businessContextAnalysis, aiAnalysisMethodology, businessCase, financialAnalysis, implementationRoadmap, competitiveAnalysis, riskFactors, executiveSummary, etc.) from a SALES PERSPECTIVE, referencing the modules, projections, and businessChallenges above. Do NOT repeat or change any numbers in recommendedSolutions or businessChallenges. All top-level projections (businessCase, etc.) must be consistent with the module projections above.
+
+# SALES FOCUS: Write all content to convince the client to purchase SAP solutions, emphasizing benefits, ROI, competitive advantages, and value proposition.
 
 # CRITICAL: You MUST include the businessChallenges array in your response
 The final analysis object MUST include the businessChallenges array exactly as provided above. Do NOT omit this field.
@@ -492,7 +576,7 @@ The final analysis object MUST include the businessChallenges array exactly as p
 - implementationRoadmap (array)
 - competitiveAnalysis (object)
 - riskFactors (array)
-- executiveSummary (string)
+- executiveSummary (string written from a SALES PERSPECTIVE, compelling summary that convinces executives to invest in SAP solutions)
 
 # CONTENT LENGTH REQUIREMENTS (CRITICAL)
 - companyProfileAnalysis: Write at least 800 characters with detailed analysis of the company's profile, industry position, and business characteristics
