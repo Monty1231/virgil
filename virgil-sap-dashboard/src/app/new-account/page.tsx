@@ -157,7 +157,10 @@ interface UploadedFile {
   type: string;
   category: string;
   url?: string;
+  s3Key?: string;
   uploadedAt: Date;
+  status?: "uploading" | "success" | "error";
+  error?: string;
 }
 
 export default function NewAccount(): ReactElement {
@@ -375,6 +378,19 @@ export default function NewAccount(): ReactElement {
           );
         }
 
+        // Add file to list with uploading status
+        const tempFile: UploadedFile = {
+          id: Date.now().toString() + Math.random(),
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          category,
+          uploadedAt: new Date(),
+          status: "uploading",
+        };
+
+        setUploadedFiles((prev) => [...prev, tempFile]);
+
         // Create FormData for file upload
         const formData = new FormData();
         formData.append("file", file);
@@ -386,23 +402,26 @@ export default function NewAccount(): ReactElement {
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Failed to upload ${file.name}`);
         }
 
         const uploadResult = await response.json();
 
-        // Add to uploaded files list
-        const newFile: UploadedFile = {
-          id: uploadResult.id || Date.now().toString(),
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          category,
-          url: uploadResult.url,
-          uploadedAt: new Date(),
-        };
-
-        setUploadedFiles((prev) => [...prev, newFile]);
+        // Update file with success status
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === tempFile.id
+              ? {
+                  ...f,
+                  id: uploadResult.id || f.id,
+                  url: uploadResult.url,
+                  s3Key: uploadResult.s3Key,
+                  status: "success" as const,
+                }
+              : f
+          )
+        );
       }
 
       // Regenerate recommendations with file context
@@ -410,7 +429,18 @@ export default function NewAccount(): ReactElement {
         await generateSAPRecommendations();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload files");
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to upload files";
+      setError(errorMessage);
+
+      // Update any uploading files with error status
+      setUploadedFiles((prev) =>
+        prev.map((f) =>
+          f.status === "uploading"
+            ? { ...f, status: "error" as const, error: errorMessage }
+            : f
+        )
+      );
     } finally {
       setIsUploading(false);
       // Reset file input
@@ -1135,6 +1165,9 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                       <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                         <Upload className="h-5 w-5" />
                         Document Upload
+                        <Badge variant="outline" className="text-xs">
+                          S3 Cloud Storage
+                        </Badge>
                       </h3>
                       <div className="grid grid-cols-2 gap-4">
                         {fileTypes.map((fileType) => (
@@ -1174,10 +1207,22 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                             {uploadedFiles.map((file) => (
                               <div
                                 key={file.id}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded border"
+                                className={`flex items-center justify-between p-2 rounded border ${
+                                  file.status === "uploading"
+                                    ? "bg-blue-50 border-blue-200"
+                                    : file.status === "error"
+                                    ? "bg-red-50 border-red-200"
+                                    : "bg-gray-50 border-gray-200"
+                                }`}
                               >
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                  {file.status === "uploading" ? (
+                                    <Loader2 className="h-4 w-4 text-blue-500 flex-shrink-0 animate-spin" />
+                                  ) : file.status === "error" ? (
+                                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                  ) : (
+                                    <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                  )}
                                   <div className="min-w-0 flex-1">
                                     <p className="text-sm font-medium truncate">
                                       {file.name}
@@ -1185,11 +1230,26 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                                     <p className="text-xs text-gray-500">
                                       {formatFileSize(file.size)} •{" "}
                                       {file.category}
+                                      {file.s3Key && (
+                                        <span className="text-green-600 ml-1">
+                                          • S3
+                                        </span>
+                                      )}
                                     </p>
+                                    {file.status === "uploading" && (
+                                      <p className="text-xs text-blue-600">
+                                        Uploading to S3...
+                                      </p>
+                                    )}
+                                    {file.status === "error" && file.error && (
+                                      <p className="text-xs text-red-600">
+                                        {file.error}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  {file.url && (
+                                  {file.url && file.status === "success" && (
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -1197,6 +1257,7 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                                       onClick={() =>
                                         window.open(file.url, "_blank")
                                       }
+                                      title="Download file"
                                     >
                                       <Download className="h-3 w-3" />
                                     </Button>
@@ -1207,6 +1268,7 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                                     size="sm"
                                     onClick={() => removeFile(file.id)}
                                     className="text-red-600 hover:text-red-700"
+                                    title="Remove file"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
@@ -1218,9 +1280,17 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                       )}
 
                       {isUploading && (
-                        <div className="mt-4 flex items-center gap-2 text-sm text-blue-600">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Uploading files...
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-sm text-blue-700 mb-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="font-medium">
+                              Uploading to S3...
+                            </span>
+                          </div>
+                          <p className="text-xs text-blue-600">
+                            Files are being securely uploaded to AWS S3 cloud
+                            storage
+                          </p>
                         </div>
                       )}
                     </div>

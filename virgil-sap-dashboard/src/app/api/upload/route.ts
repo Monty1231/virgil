@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir, readFile } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
 import sql from "@/lib/db";
+import { S3Service } from "@/lib/s3";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,22 +42,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create upload directory structure
-    const uploadDir = join(process.cwd(), "uploads", category);
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const filename = `${timestamp}_${originalName}`;
-    const filepath = join(uploadDir, filename);
-
-    // Convert file to buffer and save
+    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filepath, buffer);
+
+    // Generate S3 key
+    const s3Key = S3Service.generateKey(category, file.name);
+
+    // Upload to S3
+    const s3FileInfo = await S3Service.uploadFile(buffer, s3Key, file.type, {
+      originalName: file.name,
+      category: category,
+      uploadedAt: new Date().toISOString(),
+    });
 
     // Extract text content for AI analysis (for supported file types)
     let fileContent = "";
@@ -95,22 +90,24 @@ export async function POST(request: NextRequest) {
         file_type,
         category,
         file_path,
+        s3_key,
         file_content,
         content_extracted,
         uploaded_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
       )
       RETURNING id
     `;
 
     const fileValues = [
-      filename,
+      s3FileInfo.key.split("/").pop(), // filename without path
       file.name,
       file.size,
       file.type,
       category,
-      `/uploads/${category}/${filename}`,
+      `/api/files/${s3FileInfo.key}`, // API endpoint for file access
+      s3FileInfo.key, // S3 key for direct S3 operations
       fileContent,
       contentExtracted,
       new Date().toISOString(),
@@ -121,13 +118,14 @@ export async function POST(request: NextRequest) {
 
     // Return file information
     return NextResponse.json({
-      id: fileId || timestamp.toString(),
-      filename: filename,
+      id: fileId || Date.now().toString(),
+      filename: s3FileInfo.key.split("/").pop(),
       originalName: file.name,
       size: file.size,
       type: file.type,
       category: category,
-      url: `/uploads/${category}/${filename}`,
+      url: `/api/files/${s3FileInfo.key}`,
+      s3Key: s3FileInfo.key,
       uploadedAt: new Date().toISOString(),
       contentExtracted: contentExtracted,
       contentLength: fileContent.length,
