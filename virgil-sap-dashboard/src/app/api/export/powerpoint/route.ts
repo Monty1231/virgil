@@ -4,6 +4,8 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { parseTemplateStyles, applyTemplateStyles } from "./template-parser";
+import sql from "@/lib/db";
+import { S3Service } from "@/lib/s3";
 
 interface Slide {
   id: number;
@@ -53,19 +55,31 @@ export async function POST(request: NextRequest) {
 
     // Check if template is provided
     if (templateId) {
-      const TEMPLATES_DIR = join(process.cwd(), "uploads", "templates");
-      const templatePath = join(TEMPLATES_DIR, templateId);
-
-      if (!existsSync(templatePath)) {
-        return NextResponse.json(
-          { error: "Template not found" },
-          { status: 404 }
-        );
-      }
-
       try {
-        // Parse template styles
-        templateStyles = await parseTemplateStyles(templatePath);
+        // Get template info from database
+        const templateQuery = `
+          SELECT s3_key, original_name 
+          FROM company_files 
+          WHERE filename = $1 AND category = 'templates'
+        `;
+        
+        const result = await sql.query(templateQuery, [templateId]);
+        
+        if (result.rows.length === 0) {
+          return NextResponse.json(
+            { error: "Template not found" },
+            { status: 404 }
+          );
+        }
+
+        const template = result.rows[0];
+        const s3Key = template.s3_key;
+
+        // Download template from S3
+        const templateBuffer = await S3Service.downloadFile(s3Key);
+
+        // Parse template styles using the buffer
+        templateStyles = await parseTemplateStyles(templateBuffer);
         pptx = new PptxGenJS();
         console.log("Template styles loaded:", templateStyles);
       } catch (error) {

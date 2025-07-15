@@ -100,6 +100,32 @@ export class S3Service {
   }
 
   /**
+   * Download a file from S3 and return as buffer
+   */
+  static async downloadFile(key: string): Promise<Buffer> {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+
+    const result = await s3Client.send(command);
+
+    if (!result.Body) {
+      throw new Error(`No body returned for key: ${key}`);
+    }
+
+    // Convert the readable stream to buffer
+    const chunks: Uint8Array[] = [];
+    const stream = result.Body as any;
+
+    return new Promise((resolve, reject) => {
+      stream.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+      stream.on("error", reject);
+      stream.on("end", () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
+  /**
    * Check if a file exists in S3
    */
   static async fileExists(key: string): Promise<boolean> {
@@ -117,6 +143,13 @@ export class S3Service {
       }
       throw error;
     }
+  }
+
+  /**
+   * Check if a file exists in S3 (alias for fileExists)
+   */
+  static async checkFileExists(key: string): Promise<boolean> {
+    return this.fileExists(key);
   }
 
   /**

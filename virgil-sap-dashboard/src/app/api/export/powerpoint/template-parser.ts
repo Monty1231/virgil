@@ -146,10 +146,23 @@ const resolveSchemeColor = (
 
 // Helper function to parse PPTX and extract actual design elements
 const parsePPTXDesign = async (
-  templatePath: string
+  templatePathOrBuffer: string | Buffer
 ): Promise<TemplateStyle> => {
   try {
-    const templateBuffer = await readFile(templatePath);
+    let templateBuffer: Buffer;
+    let fileName: string;
+    let selectedStyle: keyof typeof templateStyles = "professional"; // Always initialize
+
+    if (typeof templatePathOrBuffer === "string") {
+      // It's a file path
+      templateBuffer = await readFile(templatePathOrBuffer);
+      fileName = templatePathOrBuffer.split("/").pop()?.toLowerCase() || "";
+    } else {
+      // It's a buffer
+      templateBuffer = templatePathOrBuffer;
+      fileName = "template.pptx"; // Default name for buffer
+    }
+
     const zip = new AdmZip(templateBuffer);
 
     // Extract theme colors from the presentation
@@ -200,379 +213,198 @@ const parsePPTXDesign = async (
                     colorScheme[`a:${name}`]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.[
                       "val"
                     ];
-                  if (clr) themeColorMap[name] = clr;
+                  if (clr) {
+                    themeColorMap[name] = clr.toUpperCase();
+                  }
                 });
               }
-              resolve(undefined);
+              resolve(result);
             });
           });
         }
       }
 
-      // Find the first slide and look for schemeClr reference
-      const slideFiles = entryNames.filter((name) =>
-        name.includes("slides/slide")
-      );
-      if (slideFiles.length > 0) {
-        const firstSlideEntry = zip.getEntry(slideFiles[0]);
-        if (firstSlideEntry) {
-          const slideXml = firstSlideEntry.getData().toString();
-          // Look for a:schemeClr val="..."
-          const schemeMatch = slideXml.match(/<a:schemeClr[^>]*val="([^"]+)"/);
-          if (schemeMatch) {
-            schemeBackgroundRef = schemeMatch[1];
-          }
-        }
-      }
-
-      // Try to read theme colors from all available theme files
-      for (const themePath of themeFiles) {
-        const themeEntry = zip.getEntry(themePath);
-        if (themeEntry) {
-          console.log(`Parsing theme file: ${themePath}`);
-          const themeXml = themeEntry.getData().toString();
-
-          // Look for color patterns in the XML
-          const colorMatches = themeXml.match(/srgbClr[^>]*val="([^"]+)"/g);
-          if (colorMatches) {
-            console.log(
-              `Found ${colorMatches.length} color matches in ${themePath}`
-            );
-            colorMatches.forEach((match: string) => {
-              const color = match.match(/val="([^"]+)"/)?.[1];
-              if (
-                color &&
-                color !== "FFFFFF" &&
-                color !== "000000" &&
-                color.length === 6
-              ) {
-                extractedColors[
-                  `theme_${Object.keys(extractedColors).length}`
-                ] = color;
-                console.log("Extracted theme color:", color);
-              }
-            });
-          }
-
-          // Also try to parse the XML structure for color schemes
-          try {
-            const themeResult = await new Promise((resolve, reject) => {
-              parseString(themeXml, (err, result) => {
-                if (err) reject(err);
-                else resolve(result);
-              });
-            });
-
-            const colorScheme =
-              themeResult?.["a:theme"]?.["a:themeElements"]?.[0]?.[
-                "a:clrScheme"
-              ]?.[0];
-            if (colorScheme) {
-              console.log(`Found color scheme in ${themePath}`);
-
-              // Extract background colors
-              const bg1 =
-                colorScheme["a:bg1"]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.["val"];
-              const bg2 =
-                colorScheme["a:bg2"]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.["val"];
-              if (bg1 && bg1 !== "FFFFFF") {
-                extractedColors.background = bg1;
-                console.log("Extracted background color:", bg1);
-              } else if (bg2 && bg2 !== "FFFFFF") {
-                extractedColors.background = bg2;
-                console.log("Extracted background color:", bg2);
-              } else {
-                // If no explicit background color found, try to find the most prominent color
-                const allColors = Object.values(extractedColors).filter(
-                  (c) => c && c !== "FFFFFF" && c !== "000000"
-                );
-                if (allColors.length > 0) {
-                  // Use the first non-white/black color as background
-                  const prominentColor = allColors[0];
-                  extractedColors.background = prominentColor;
-                  console.log(
-                    "Using prominent color as background:",
-                    prominentColor
-                  );
-                }
-              }
-
-              // Extract text colors
-              const tx1 =
-                colorScheme["a:tx1"]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.["val"];
-              const tx2 =
-                colorScheme["a:tx2"]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.["val"];
-              if (tx1 && tx1 !== "000000") {
-                extractedColors.text = tx1;
-                console.log("Extracted text color:", tx1);
-              } else if (tx2 && tx2 !== "000000") {
-                extractedColors.text = tx2;
-                console.log("Extracted text color:", tx2);
-              }
-
-              // Extract accent colors
-              for (let i = 1; i <= 6; i++) {
-                const accent =
-                  colorScheme[`a:accent${i}`]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.[
-                    "val"
-                  ];
-                if (accent && accent !== "FFFFFF" && accent !== "000000") {
-                  extractedColors[`accent${i}`] = accent;
-                  console.log(`Extracted accent${i} color:`, accent);
-                }
-              }
-            }
-          } catch (parseError) {
-            console.log(
-              `Could not parse theme XML structure for ${themePath}:`,
-              parseError.message
-            );
-          }
-        }
-      }
-
-      // Try to extract colors from slide masters
+      // Find slide master files
       const slideMasterFiles = entryNames.filter((name) =>
         name.includes("slideMaster")
       );
       console.log("Found slide master files:", slideMasterFiles);
 
-      for (const masterPath of slideMasterFiles) {
-        const slideMasterEntry = zip.getEntry(masterPath);
-        if (slideMasterEntry) {
-          console.log(`Parsing slide master: ${masterPath}`);
-          const slideMasterXml = slideMasterEntry.getData().toString();
-
-          // Look for background colors in slide master
-          const bgMatches = slideMasterXml.match(
-            /p:solidFill[^>]*a:srgbClr[^>]*val="([^"]+)"/g
-          );
-          if (bgMatches) {
-            console.log(
-              `Found ${bgMatches.length} background matches in ${masterPath}`
-            );
-            bgMatches.forEach((match: string) => {
-              const color = match.match(/val="([^"]+)"/)?.[1];
-              if (color && color !== "FFFFFF" && color.length === 6) {
-                extractedColors.slideBackground = color;
-                console.log("Extracted slide background color:", color);
-              }
-            });
-          }
-
-          // Look for any other color references
-          const colorMatches = slideMasterXml.match(
-            /srgbClr[^>]*val="([^"]+)"/g
+      // Parse slide masters for additional color information
+      for (const masterFile of slideMasterFiles) {
+        const masterEntry = zip.getEntry(masterFile);
+        if (masterEntry) {
+          const masterXml = masterEntry.getData().toString();
+          // Extract colors from slide master
+          const colorMatches = masterXml.match(
+            /<a:srgbClr val="([0-9A-Fa-f]{6})"/g
           );
           if (colorMatches) {
-            colorMatches.forEach((match: string) => {
-              const color = match.match(/val="([^"]+)"/)?.[1];
-              if (
-                color &&
-                color !== "FFFFFF" &&
-                color !== "000000" &&
-                color.length === 6
-              ) {
-                extractedColors[
-                  `master_${Object.keys(extractedColors).length}`
-                ] = color;
-                console.log("Extracted master color:", color);
+            colorMatches.forEach((match, index) => {
+              const color = match.match(/val="([0-9A-Fa-f]{6})"/)?.[1];
+              if (color) {
+                extractedColors[`master_${index + 37}`] = color.toUpperCase();
               }
             });
           }
         }
       }
 
-      // Try to extract colors from any slide content
-      const slideContentFiles = entryNames.filter((name) =>
+      // Find slide files to extract colors from actual slides
+      const slideFiles = entryNames.filter((name) =>
         name.includes("slides/slide")
       );
-      if (slideContentFiles.length > 0) {
-        console.log(
-          `Found ${slideContentFiles.length} slide files, checking for colors...`
-        );
+      console.log("Found slide files, checking for colors...");
 
-        // Check first few slides for colors
-        for (let i = 0; i < Math.min(3, slideContentFiles.length); i++) {
-          const slideEntry = zip.getEntry(slideContentFiles[i]);
-          if (slideEntry) {
-            const slideXml = slideEntry.getData().toString();
-            const colorMatches = slideXml.match(/srgbClr[^>]*val="([^"]+)"/g);
-            if (colorMatches) {
-              colorMatches.forEach((match: string) => {
-                const color = match.match(/val="([^"]+)"/)?.[1];
-                if (
-                  color &&
-                  color !== "FFFFFF" &&
-                  color !== "000000" &&
-                  color.length === 6
-                ) {
-                  extractedColors[
-                    `slide_${Object.keys(extractedColors).length}`
-                  ] = color;
-                  console.log("Extracted slide color:", color);
-                }
-              });
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.log(
-        "Could not parse theme colors, using fallback:",
-        error.message
-      );
-    }
-
-    console.log("Final extracted colors:", extractedColors);
-
-    // If we found a schemeClr reference and can resolve it, use that as the background
-    let resolvedBackground =
-      extractedColors.background || extractedColors.slideBackground;
-    if (
-      schemeBackgroundRef &&
-      themeColorMap[schemeBackgroundRef.toLowerCase()]
-    ) {
-      resolvedBackground = themeColorMap[schemeBackgroundRef.toLowerCase()];
-    }
-
-    // Determine template style based on extracted colors and file characteristics
-    const fileName = templatePath.split("/").pop()?.toLowerCase() || "";
-    const fileSize = templateBuffer.length;
-
-    let selectedStyle: keyof typeof templateStyles = "professional";
-
-    // First, check filename for specific design types that should override color analysis
-    if (fileName.includes("organic") || fileName.includes("natural") || fileName.includes("soft")) {
-      selectedStyle = "organic";
-    } else if (fileName.includes("marketing") || fileName.includes("plan") || fileName.includes("shapes") || fileName.includes("creative")) {
-      selectedStyle = "marketing";
-    } else if (fileName.includes("modern") || fileName.includes("contemporary") || fileName.includes("minimal")) {
-      selectedStyle = "modern";
-    } else if (fileName.includes("corporate") || fileName.includes("business") || fileName.includes("professional")) {
-      selectedStyle = "corporate";
-    } else if (fileName.includes("clean") || fileName.includes("simple") || fileName.includes("white")) {
-      selectedStyle = "clean";
-    } else {
-      // Analyze the extracted colors to determine template style
-      if (Object.keys(extractedColors).length > 0) {
-        // We have actual colors from template - analyze them
-        const allColors = Object.values(extractedColors).map((c) =>
-          c.toLowerCase()
-        );
-
-        console.log("Analyzing extracted colors:", allColors);
-
-        // Check for specific color patterns
-        if (
-          allColors.some(
-            (c) =>
-              c.includes("f0f9ff") || c.includes("e0f2fe") || c.includes("dbeafe")
-          )
-        ) {
-          selectedStyle = "organic";
-        } else if (
-          allColors.some(
-            (c) =>
-              c.includes("3b82f6") || c.includes("1e40af") || c.includes("2563eb")
-          )
-        ) {
-          selectedStyle = "modern";
-        } else if (
-          allColors.some(
-            (c) =>
-              c.includes("1e3a5f") || c.includes("1e293b") || c.includes("0f172a")
-          )
-        ) {
-          selectedStyle = "professional";
-        } else if (
-          allColors.some(
-            (c) =>
-              c.includes("7c3aed") || c.includes("a855f7") || c.includes("9333ea")
-          )
-        ) {
-          selectedStyle = "marketing";
-        } else if (
-          allColors.some(
-            (c) =>
-              c.includes("374151") || c.includes("6b7280") || c.includes("4b5563")
-          )
-        ) {
-          selectedStyle = "corporate";
-        } else if (
-          allColors.some(
-            (c) =>
-              c.includes("ffffff") || c.includes("f8fafc") || c.includes("f1f5f9")
-          )
-        ) {
-          selectedStyle = "clean";
-        } else {
-          // Use the most prominent non-white color to determine style
-          const prominentColor = allColors.find(
-            (c) => c !== "ffffff" && c !== "000000"
+      // Extract colors from slides
+      for (const slideFile of slideFiles) {
+        const slideEntry = zip.getEntry(slideFile);
+        if (slideEntry) {
+          const slideXml = slideEntry.getData().toString();
+          // Extract colors from slide content
+          const colorMatches = slideXml.match(
+            /<a:srgbClr val="([0-9A-Fa-f]{6})"/g
           );
-          if (prominentColor) {
-            // Analyze the color to determine style
-            const r = parseInt(prominentColor.substring(0, 2), 16);
-            const g = parseInt(prominentColor.substring(2, 4), 16);
-            const b = parseInt(prominentColor.substring(4, 6), 16);
-
-            // Simple color analysis
-            if (b > r && b > g) {
-              selectedStyle = "modern"; // Blue dominant
-            } else if (r > g && r > b) {
-              selectedStyle = "marketing"; // Red dominant
-            } else if (g > r && g > b) {
-              selectedStyle = "organic"; // Green dominant
-            } else {
-              selectedStyle = "professional"; // Neutral
-            }
-          }
-        }
-      } else {
-        // Fallback to filename analysis
-        if (
-          fileName.includes("organic") ||
-          fileName.includes("natural") ||
-          fileName.includes("soft")
-        ) {
-          selectedStyle = "organic";
-        } else if (
-          fileName.includes("marketing") ||
-          fileName.includes("plan") ||
-          fileName.includes("shapes") ||
-          fileName.includes("creative")
-        ) {
-          selectedStyle = "marketing";
-        } else if (
-          fileName.includes("modern") ||
-          fileName.includes("contemporary") ||
-          fileName.includes("minimal")
-        ) {
-          selectedStyle = "modern";
-        } else if (
-          fileName.includes("corporate") ||
-          fileName.includes("business") ||
-          fileName.includes("professional")
-        ) {
-          selectedStyle = "corporate";
-        } else if (
-          fileName.includes("clean") ||
-          fileName.includes("simple") ||
-          fileName.includes("white")
-        ) {
-          selectedStyle = "clean";
-        } else {
-          // Size-based selection
-          if (fileSize > 5000000) {
-            selectedStyle = "marketing";
-          } else if (fileSize > 2000000) {
-            selectedStyle = "modern";
-          } else {
-            selectedStyle = "clean";
+          if (colorMatches) {
+            colorMatches.forEach((match, index) => {
+              const color = match.match(/val="([0-9A-Fa-f]{6})"/)?.[1];
+              if (color) {
+                extractedColors[`theme_${index + 17}`] = color.toUpperCase();
+              }
+            });
           }
         }
       }
+
+      // Extract colors from theme files
+      for (const themeFile of themeFiles) {
+        const themeEntry = zip.getEntry(themeFile);
+        if (themeEntry) {
+          const themeXml = themeEntry.getData().toString();
+          console.log(`Parsing theme file: ${themeFile}`);
+
+          // Extract colors from theme XML
+          const colorMatches = themeXml.match(
+            /<a:srgbClr val="([0-9A-Fa-f]{6})"/g
+          );
+          if (colorMatches) {
+            console.log(
+              `Found ${colorMatches.length} color matches in ${themeFile}`
+            );
+            colorMatches.forEach((match, index) => {
+              const color = match.match(/val="([0-9A-Fa-f]{6})"/)?.[1];
+              if (color) {
+                extractedColors[`theme_${index}`] = color.toUpperCase();
+                console.log(`Extracted theme color: ${color}`);
+              }
+            });
+          }
+
+          // Parse theme XML for color scheme
+          await new Promise((resolve, reject) => {
+            parseString(themeXml, (err, result) => {
+              if (err) reject(err);
+              const colorScheme =
+                result?.["a:theme"]?.["a:themeElements"]?.[0]?.[
+                  "a:clrScheme"
+                ]?.[0];
+              if (colorScheme) {
+                console.log("Found color scheme in " + themeFile);
+
+                // Extract background color
+                const bg1 =
+                  colorScheme["a:bg1"]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.["val"];
+                const bg2 =
+                  colorScheme["a:bg2"]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.["val"];
+
+                if (bg1) {
+                  extractedColors.background = bg1.toUpperCase();
+                  console.log(`Using prominent color as background: ${bg1}`);
+                } else if (bg2) {
+                  extractedColors.background = bg2.toUpperCase();
+                  console.log(`Using prominent color as background: ${bg2}`);
+                }
+
+                // Extract accent colors
+                [
+                  "accent1",
+                  "accent2",
+                  "accent3",
+                  "accent4",
+                  "accent5",
+                  "accent6",
+                ].forEach((name) => {
+                  const clr =
+                    colorScheme[`a:${name}`]?.[0]?.["a:srgbClr"]?.[0]?.["$"]?.[
+                      "val"
+                    ];
+                  if (clr) {
+                    extractedColors[name] = clr.toUpperCase();
+                    console.log(`Extracted ${name} color: ${clr}`);
+                  }
+                });
+              }
+              resolve(result);
+            });
+          });
+        }
+      }
+
+      console.log("Final extracted colors:", extractedColors);
+
+      // Determine the most prominent background color
+      const resolvedBackground =
+        extractedColors.background ||
+        extractedColors.bg1 ||
+        extractedColors.theme_0 ||
+        "FFFFFF";
+
+      // Select template style based on extracted colors and filename
+      // Analyze filename for design clues
+      if (
+        fileName.includes("organic") ||
+        fileName.includes("natural") ||
+        fileName.includes("soft")
+      ) {
+        selectedStyle = "organic";
+      } else if (
+        fileName.includes("marketing") ||
+        fileName.includes("plan") ||
+        fileName.includes("shapes") ||
+        fileName.includes("creative")
+      ) {
+        selectedStyle = "marketing";
+      } else if (
+        fileName.includes("modern") ||
+        fileName.includes("contemporary") ||
+        fileName.includes("minimal")
+      ) {
+        selectedStyle = "modern";
+      } else if (
+        fileName.includes("corporate") ||
+        fileName.includes("business") ||
+        fileName.includes("professional")
+      ) {
+        selectedStyle = "corporate";
+      } else if (
+        fileName.includes("clean") ||
+        fileName.includes("simple") ||
+        fileName.includes("white")
+      ) {
+        selectedStyle = "clean";
+      } else {
+        // Size-based selection
+        if (fileSize > 5000000) {
+          selectedStyle = "marketing";
+        } else if (fileSize > 2000000) {
+          selectedStyle = "modern";
+        } else {
+          selectedStyle = "clean";
+        }
+      }
+    } catch (parseError) {
+      console.error("Failed to parse theme colors:", parseError);
+      // Continue with basic analysis
     }
 
     // Get the base template style
@@ -619,19 +451,28 @@ const parsePPTXDesign = async (
   } catch (error) {
     console.error("Failed to parse PPTX design:", error);
     // Fallback to basic analysis
-    return await analyzeTemplateDesign(templatePath);
+    return await analyzeTemplateDesign(templatePathOrBuffer);
   }
 };
 
 // Helper function to analyze template content and extract actual design
 const analyzeTemplateDesign = async (
-  templatePath: string
+  templatePathOrBuffer: string | Buffer
 ): Promise<TemplateStyle> => {
   try {
-    // For now, we'll use the filename-based approach but with better analysis
-    const fileName = templatePath.split("/").pop()?.toLowerCase() || "";
-    const templateBuffer = await readFile(templatePath);
-    const fileSize = templateBuffer.length;
+    let fileName: string;
+    let fileSize: number;
+
+    if (typeof templatePathOrBuffer === "string") {
+      // It's a file path
+      fileName = templatePathOrBuffer.split("/").pop()?.toLowerCase() || "";
+      const templateBuffer = await readFile(templatePathOrBuffer);
+      fileSize = templateBuffer.length;
+    } else {
+      // It's a buffer
+      fileName = "template.pptx"; // Default name for buffer
+      fileSize = templatePathOrBuffer.length;
+    }
 
     console.log(`Analyzing template: ${fileName}, size: ${fileSize} bytes`);
 
@@ -710,14 +551,19 @@ const analyzeTemplateDesign = async (
 };
 
 export async function parseTemplateStyles(
-  templatePath: string
+  templatePathOrBuffer: string | Buffer
 ): Promise<TemplateStyle> {
   try {
     // Use the enhanced PPTX parser to extract actual design elements
-    const templateStyle = await parsePPTXDesign(templatePath);
+    const templateStyle = await parsePPTXDesign(templatePathOrBuffer);
+
+    const templateName =
+      typeof templatePathOrBuffer === "string"
+        ? templatePathOrBuffer
+        : "Buffer template";
 
     console.log(
-      `Template parsed: ${templatePath}, style: ${templateStyle.templateDesign}, colors: ${templateStyle.slideBackground}`
+      `Template parsed: ${templateName}, style: ${templateStyle.templateDesign}, colors: ${templateStyle.slideBackground}`
     );
 
     return templateStyle;
