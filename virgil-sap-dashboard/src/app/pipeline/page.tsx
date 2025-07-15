@@ -742,6 +742,37 @@ export default function Pipeline() {
 
   const agingDeals = getAgingDeals();
 
+  const downloadPipelinePivot = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/export-pipeline-pivot"
+      );
+      if (!response.ok) throw new Error("Network response was not ok");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      // Get filename from Content-Disposition header
+      let filename = "pipeline_template.xlsx";
+      const disposition = response.headers.get("Content-Disposition");
+      if (disposition && disposition.indexOf("filename=") !== -1) {
+        filename = disposition
+          .split("filename=")[1]
+          .replace(/['"]/g, "")
+          .trim();
+      }
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(
+        "Failed to export: " + (error instanceof Error ? error.message : error)
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 space-y-6 p-6">
@@ -786,9 +817,7 @@ export default function Pipeline() {
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-950 to-blue-800 bg-clip-text text-transparent">
-                Pipeline Tracker
-              </h1>
+              <h1 className="text-3xl font-bold">Pipeline Tracker</h1>
               <p className="text-gray-700">
                 {error ? (
                   <span className="text-red-600">Error: {error}</span>
@@ -848,6 +877,14 @@ export default function Pipeline() {
               onClick={() => setBulkMode(!bulkMode)}
             >
               {bulkMode ? "Exit Bulk Mode" : "Bulk Actions"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-blue-300 hover:bg-blue-100"
+              onClick={downloadPipelinePivot}
+            >
+              Export Pipeline Pivot to Excel
             </Button>
             <AddDealDialog onDealCreated={handleDealCreated} />
           </div>
