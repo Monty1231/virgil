@@ -34,12 +34,23 @@ interface ExportRequest {
   };
   background?: BackgroundOption;
   templateId?: string;
+  customBackgroundImage?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: ExportRequest = await request.json();
-    const { slides, deckConfig, background, templateId } = body;
+    const {
+      slides,
+      deckConfig,
+      background,
+      templateId,
+      customBackgroundImage,
+    } = body;
+
+    console.log("📥 PowerPoint export request received");
+    console.log("📄 Template ID:", templateId);
+    console.log("📊 Slides count:", slides?.length);
 
     if (!slides || slides.length === 0) {
       return NextResponse.json(
@@ -56,15 +67,17 @@ export async function POST(request: NextRequest) {
     // Check if template is provided
     if (templateId) {
       try {
+        console.log("🎨 Processing template:", templateId);
+
         // Get template info from database
         const templateQuery = `
           SELECT s3_key, original_name 
           FROM company_files 
           WHERE filename = $1 AND category = 'templates'
         `;
-        
+
         const result = await sql.query(templateQuery, [templateId]);
-        
+
         if (result.rows.length === 0) {
           return NextResponse.json(
             { error: "Template not found" },
@@ -75,13 +88,28 @@ export async function POST(request: NextRequest) {
         const template = result.rows[0];
         const s3Key = template.s3_key;
 
+        console.log("📁 Template found, S3 key:", s3Key);
+
         // Download template from S3
         const templateBuffer = await S3Service.downloadFile(s3Key);
 
         // Parse template styles using the buffer
         templateStyles = await parseTemplateStyles(templateBuffer);
+
+        // Create presentation from template
         pptx = new PptxGenJS();
-        console.log("Template styles loaded:", templateStyles);
+
+        // Load the template as a base
+        try {
+          // For now, we'll use the template styles to create a styled presentation
+          // In a future enhancement, we could use PptxGenJS's template loading capabilities
+          console.log("✅ Template styles loaded:", templateStyles);
+        } catch (templateError) {
+          console.error(
+            "Failed to load template, using styles only:",
+            templateError
+          );
+        }
       } catch (error) {
         console.error("Failed to process template:", error);
         return NextResponse.json(
@@ -91,6 +119,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Create new presentation
+      console.log("📝 Creating new presentation without template");
       pptx = new PptxGenJS();
     }
 
@@ -189,18 +218,44 @@ export async function POST(request: NextRequest) {
         console.log(`Processing slide ${slide.order}: ${slide.title}`);
         const pptxSlide = pptx.addSlide();
 
-        // Set slide background based on template
-        if (templateStyles) {
+        // Use custom background image if provided
+        if (customBackgroundImage) {
+          // Extract base64 data from data URL
+          const match = customBackgroundImage.match(
+            /^data:(image\/\w+);base64,(.+)$/
+          );
+          if (match) {
+            const ext = match[1].split("/")[1];
+            const base64 = match[2];
+            pptxSlide.addImage({
+              data: `data:image/${ext};base64,${base64}`,
+              x: 0,
+              y: 0,
+              w: slideWidth,
+              h: slideHeight,
+            });
+            console.log("🖼️ Added custom background image to slide");
+          } else {
+            console.warn("⚠️ Invalid customBackgroundImage data URL");
+          }
+        } else if (templateStyles) {
           const bgColor = getSafeColor(templateStyles.slideBackground);
-          console.log(`Setting template background: ${bgColor}`);
+          console.log(
+            `🎨 Setting template background: ${bgColor} (from ${templateStyles.slideBackground})`
+          );
           pptxSlide.background = { color: bgColor };
         } else {
           // Use basic white background if no template
+          console.log("⚪ Using default white background");
           pptxSlide.background = { color: "FFFFFF" };
         }
 
         // Add decorative elements based on template design
         if (templateStyles) {
+          console.log(
+            "🎨 Adding decorative elements for design:",
+            templateStyles.templateDesign
+          );
           addDecorativeElements(pptxSlide, templateStyles);
         }
 
@@ -212,7 +267,10 @@ export async function POST(request: NextRequest) {
         );
 
         console.log(
-          `Using colors - Title: ${titleColor}, Text: ${textColor}, Accent: ${accentColor}`
+          `🎨 Using colors - Title: ${titleColor}, Text: ${textColor}, Accent: ${accentColor}`
+        );
+        console.log(
+          `📝 Template colors - Title: ${templateStyles?.titleColor}, Text: ${templateStyles?.textColor}, Accent: ${templateStyles?.accentColor}`
         );
 
         // Add slide title with template styling

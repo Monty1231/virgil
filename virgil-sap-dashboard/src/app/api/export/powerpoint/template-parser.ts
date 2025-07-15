@@ -151,24 +151,26 @@ const parsePPTXDesign = async (
   try {
     let templateBuffer: Buffer;
     let fileName: string;
+    let fileSize: number;
     let selectedStyle: keyof typeof templateStyles = "professional"; // Always initialize
+    let extractedColors: any = {};
+    let themeColorMap: Record<string, string> = {};
+    let schemeBackgroundRef: string | undefined;
+    let resolvedBackground: string = "FFFFFF"; // Initialize with default
 
     if (typeof templatePathOrBuffer === "string") {
       // It's a file path
       templateBuffer = await readFile(templatePathOrBuffer);
       fileName = templatePathOrBuffer.split("/").pop()?.toLowerCase() || "";
+      fileSize = templateBuffer.length;
     } else {
       // It's a buffer
       templateBuffer = templatePathOrBuffer;
       fileName = "template.pptx"; // Default name for buffer
+      fileSize = templatePathOrBuffer.length;
     }
 
     const zip = new AdmZip(templateBuffer);
-
-    // Extract theme colors from the presentation
-    let extractedColors: any = {};
-    let themeColorMap: Record<string, string> = {};
-    let schemeBackgroundRef: string | undefined;
 
     try {
       console.log("Starting PPTX color extraction...");
@@ -353,7 +355,7 @@ const parsePPTXDesign = async (
       console.log("Final extracted colors:", extractedColors);
 
       // Determine the most prominent background color
-      const resolvedBackground =
+      resolvedBackground =
         extractedColors.background ||
         extractedColors.bg1 ||
         extractedColors.theme_0 ||
@@ -404,7 +406,7 @@ const parsePPTXDesign = async (
       }
     } catch (parseError) {
       console.error("Failed to parse theme colors:", parseError);
-      // Continue with basic analysis
+      // Continue with basic analysis - selectedStyle is already initialized
     }
 
     // Get the base template style

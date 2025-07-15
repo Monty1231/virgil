@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -193,6 +193,7 @@ export default function Decks() {
   const [customBackgroundImage, setCustomBackgroundImage] = useState<
     string | null
   >(null);
+  const backgroundImageInputRef = useRef<HTMLInputElement>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
@@ -812,25 +813,21 @@ Timeline: [X] weeks to project kickoff`;
     return template?.icon || FileText;
   };
 
+  // Handle background image upload
   const handleBackgroundImageUpload = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setCustomBackgroundImage(result);
-        setSelectedBackground({
-          id: "custom",
-          name: "Custom Image",
-          type: "image",
-          value: result,
-          preview: result,
-        });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Only image files are supported for background.");
+      return;
     }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCustomBackgroundImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleTemplateUpload = async (
@@ -916,16 +913,34 @@ Timeline: [X] weeks to project kickoff`;
 
   const fetchTemplateStyles = async (templateId: string) => {
     try {
+      console.log("🔍 Fetching template styles for:", templateId);
       const response = await fetch(
         `/api/export/powerpoint/template-styles?id=${templateId}`
       );
+
+      console.log("📡 Response status:", response.status);
+      console.log("📡 Response ok:", response.ok);
+
       if (response.ok) {
         const styles = await response.json();
-        setTemplateStyles(styles);
         console.log("✅ Template styles loaded:", styles);
+        setTemplateStyles(styles);
+      } else {
+        const errorData = await response.json();
+        console.error("❌ Template styles fetch failed:", errorData);
+        setError(
+          `Failed to load template styles: ${
+            errorData.error || "Unknown error"
+          }`
+        );
       }
     } catch (error) {
       console.error("❌ Failed to fetch template styles:", error);
+      setError(
+        `Failed to fetch template styles: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -951,18 +966,25 @@ Timeline: [X] weeks to project kickoff`;
 
     try {
       console.log(`📤 Exporting to ${format}...`);
+      console.log("🎨 Current template styles:", templateStyles);
+      console.log("📄 Selected template:", selectedTemplate);
+
+      const exportData = {
+        slides,
+        deckConfig,
+        background: selectedBackground,
+        templateId: selectedTemplate,
+        customBackgroundImage, // send the image data URL to backend
+      };
+
+      console.log("📦 Export data:", exportData);
 
       const response = await fetch(`/api/export/${format}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          slides,
-          deckConfig,
-          background: selectedBackground,
-          templateId: selectedTemplate,
-        }),
+        body: JSON.stringify(exportData),
       });
 
       if (!response.ok) {
@@ -1567,6 +1589,10 @@ Timeline: [X] weeks to project kickoff`;
           )}
 
           <div className="space-y-4">
+            {(() => {
+              console.log("Template styles in preview:", templateStyles);
+              return null;
+            })()}
             {slides.map((slide, index) => {
               const SlideIcon = getSlideIcon(slide.type);
               return (
@@ -1672,7 +1698,9 @@ Timeline: [X] weeks to project kickoff`;
                       <div
                         className="p-4 rounded-lg border-2 border-dashed border-gray-200 relative"
                         style={{
-                          background: templateStyles?.slideBackground
+                          background: customBackgroundImage
+                            ? undefined
+                            : templateStyles?.slideBackground
                             ? `#${templateStyles.slideBackground}`
                             : selectedBackground.type === "gradient"
                             ? selectedBackground.preview
@@ -1686,6 +1714,13 @@ Timeline: [X] weeks to project kickoff`;
                             : "#ffffff",
                           position: "relative",
                           overflow: "hidden",
+                          ...(customBackgroundImage
+                            ? {
+                                backgroundImage: `url(${customBackgroundImage})`,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                              }
+                            : {}),
                         }}
                       >
                         {/* Add template design elements */}
