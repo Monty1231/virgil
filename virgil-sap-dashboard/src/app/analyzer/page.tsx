@@ -193,7 +193,6 @@ export default function Analyzer() {
   // Fetch companies when component mounts
   useEffect(() => {
     fetchCompanies();
-    testDebugAPI();
   }, []);
 
   // Fetch previous analyses when company is selected
@@ -204,18 +203,6 @@ export default function Analyzer() {
       setPreviousAnalyses([]);
     }
   }, [selectedCompanyId]);
-
-  const testDebugAPI = async () => {
-    try {
-      console.log("🔍 Testing debug API...");
-      const response = await fetch("/api/debug-ai");
-      const data = await response.json();
-      setDebugInfo(data);
-      console.log("🔍 Debug API result:", data);
-    } catch (error) {
-      console.error("🔍 Debug API failed:", error);
-    }
-  };
 
   const fetchCompanies = async () => {
     setLoading(true);
