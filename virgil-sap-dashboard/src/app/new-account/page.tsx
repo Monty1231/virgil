@@ -207,6 +207,7 @@ export default function NewAccount(): ReactElement {
     useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isRagProcessing, setIsRagProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -560,6 +561,12 @@ export default function NewAccount(): ReactElement {
       const newCompany = await response.json();
       setCreatedCompanyId(newCompany.id);
       setSuccess(`Successfully created account for ${formData.companyName}!`);
+      setIsRagProcessing(true); // Start RAG processing indicator
+
+      // Stop RAG processing indicator after 30 seconds
+      setTimeout(() => {
+        setIsRagProcessing(false);
+      }, 30000);
 
       // Reset form
       setFormData({
@@ -687,6 +694,17 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
             {success}
+            <div className="mt-2 text-sm text-green-700">
+              {isRagProcessing && (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                  <span>
+                    Processing company data for AI analysis (this happens in the
+                    background)...
+                  </span>
+                </div>
+              )}
+            </div>
           </AlertDescription>
         </Alert>
       )}

@@ -187,6 +187,7 @@ export default function Analyzer() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [useSimpleRoute, setUseSimpleRoute] = useState(false);
+  const [useRAG, setUseRAG] = useState(false);
   const [activeTab, setActiveTab] = useState("generate");
 
   // Fetch companies when component mounts
@@ -377,8 +378,14 @@ export default function Analyzer() {
         companyId
       );
 
-      const apiUrl = `/api/ai-analysis/company/${companyId}`;
+      const apiUrl = useRAG
+        ? `/api/ai-analysis/company/${companyId}/rag`
+        : `/api/ai-analysis/company/${companyId}`;
       console.log("🤖 Analyzer: Using API URL:", apiUrl);
+      console.log(
+        "🤖 Analyzer: Using method:",
+        useRAG ? "RAG" : "Traditional Prompt Stuffing"
+      );
 
       const response = await fetch(apiUrl, {
         method: "GET",
@@ -556,6 +563,17 @@ export default function Analyzer() {
         </div>
         <div className="flex gap-2">
           <Button
+            onClick={() => setUseRAG(!useRAG)}
+            variant="outline"
+            size="sm"
+            className={`bg-transparent hover:bg-accent ${
+              useRAG ? "border-blue-500 text-blue-600" : ""
+            }`}
+          >
+            <Brain className="mr-2 h-4 w-4" />
+            {useRAG ? "RAG Mode" : "Traditional Mode"}
+          </Button>
+          <Button
             onClick={() => setUseSimpleRoute(!useSimpleRoute)}
             variant="outline"
             size="sm"
@@ -596,6 +614,12 @@ export default function Analyzer() {
                 <strong>Current Mode:</strong>{" "}
                 {useSimpleRoute ? "Simple Test Route" : "Full AI Route"}
               </p>
+              <p>
+                <strong>Analysis Method:</strong>{" "}
+                {useRAG
+                  ? "RAG (Retrieval-Augmented Generation)"
+                  : "Traditional Prompt Stuffing"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -607,6 +631,12 @@ export default function Analyzer() {
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
             Select Company for Comprehensive AI Analysis
+            {useRAG && (
+              <Badge className="bg-blue-100 text-blue-800 border-blue-200 ml-2">
+                <Brain className="h-3 w-3 mr-1" />
+                RAG Mode
+              </Badge>
+            )}
             {useSimpleRoute && (
               <Badge className="bg-amber-100 text-amber-800 border-amber-200 ml-2">
                 <Bug className="h-3 w-3 mr-1" />
@@ -693,6 +723,44 @@ export default function Analyzer() {
                 ✅ Found {companies.length} companies
               </p>
             )}
+
+            {/* Mode Description */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`p-1 rounded ${
+                    useRAG ? "bg-blue-100" : "bg-slate-100"
+                  }`}
+                >
+                  <Brain
+                    className={`h-4 w-4 ${
+                      useRAG ? "text-blue-600" : "text-slate-500"
+                    }`}
+                  />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-slate-900 mb-1">
+                    {useRAG ? "RAG Mode (Recommended)" : "Traditional Mode"}
+                  </h4>
+                  <p className="text-xs text-slate-600">
+                    {useRAG
+                      ? "Uses Retrieval-Augmented Generation for more accurate, efficient analysis with knowledge base retrieval."
+                      : "Uses traditional prompt stuffing with all data included in the prompt."}
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <Badge variant="outline" className="text-xs">
+                      {useRAG ? "Faster" : "Slower"}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {useRAG ? "More Accurate" : "Less Accurate"}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {useRAG ? "Cost Effective" : "More Expensive"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Generate Analysis Button */}
             {selectedCompany && (

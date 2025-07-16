@@ -1,5 +1,6 @@
 import sql from "@/lib/db";
 import { NextResponse } from "next/server";
+import { knowledgeBase } from "@/lib/knowledge-base";
 
 export async function GET() {
   try {
@@ -137,6 +138,29 @@ export async function POST(request: Request) {
     );
 
     console.log("Deal created:", result.rows[0]);
+
+    // Update company data in RAG knowledge base
+    try {
+      console.log("🔄 Deals API: Updating company in RAG knowledge base...");
+      await knowledgeBase.initialize(); // Ensure knowledge base is initialized
+
+      // Remove existing company data and add updated data
+      await knowledgeBase.removeCompanyFromKnowledgeBase(company_id);
+      const chunksAdded = await knowledgeBase.addCompanyToKnowledgeBase(
+        company_id
+      );
+      console.log(
+        "🔄 Deals API: Updated company in RAG knowledge base with",
+        chunksAdded,
+        "chunks"
+      );
+    } catch (ragError) {
+      console.error(
+        "🔄 Deals API: Failed to update company in RAG knowledge base:",
+        ragError
+      );
+      // Don't fail the request for RAG issues - deal is still created successfully
+    }
 
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error) {

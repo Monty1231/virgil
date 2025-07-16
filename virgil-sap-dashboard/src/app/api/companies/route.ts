@@ -1,5 +1,6 @@
 import sql from "@/lib/db";
 import { NextResponse } from "next/server";
+import { knowledgeBase } from "@/lib/knowledge-base";
 
 export async function GET() {
   try {
@@ -186,6 +187,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // Add company to RAG knowledge base (asynchronously)
+    try {
+      console.log("🏢 API: Starting async RAG processing...");
+      // Don't await this - let it run in the background
+      knowledgeBase.initialize()
+        .then(() => knowledgeBase.addCompanyToKnowledgeBase(newCompany.id))
+        .then((chunksAdded) => {
+          console.log("🏢 API: ✅ Async RAG processing completed - Added", chunksAdded, "chunks to knowledge base");
+        })
+        .catch((ragError) => {
+          console.error("🏢 API: ❌ Async RAG processing failed:", ragError);
+        });
+    } catch (ragError) {
+      console.error("🏢 API: Failed to start async RAG processing:", ragError);
+      // Don't fail the request for RAG issues - company is still created successfully
+    }
+
     return NextResponse.json(newCompany, { status: 201 });
   } catch (error: any) {
     console.error("🏢 API: Error creating company:", error);
@@ -199,10 +217,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      {
-        error: "Failed to create company",
-        details: error.message,
-      },
+      { error: "Failed to create company" },
       { status: 500 }
     );
   }
