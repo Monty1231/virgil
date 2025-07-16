@@ -108,6 +108,9 @@ export async function GET(
     console.log("🤖 RAG AI Analysis: Generating analysis with RAG...");
     const analysis = await ragService.generateAnalysis(companyContext);
 
+    // Log the raw LLM output for business case/financials
+    console.log("🤖 RAW ANALYSIS OUTPUT:", JSON.stringify(analysis, null, 2));
+
     // Improved fallback logic
     if (
       !analysis ||
