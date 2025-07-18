@@ -2,6 +2,7 @@
   "name": "virgil-sap-dashboard",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev:all": "concurrently \"next dev --turbopack\" \"cd ../pipeline-export-backend && source venv/bin/activate && uvicorn export_pivot_api:app --reload\"",
     "dev": "next dev --turbopack",
@@ -33,6 +34,7 @@
     "ai": "^4.3.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "csv-parser": "^3.2.0",
     "dotenv": "^17.2.0",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
@@ -63,6 +65,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5"

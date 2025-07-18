@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { knowledgeBase, VectorSearchResult } from "./knowledge-base";
+import { knowledgeBase } from "./knowledge-base";
+import { VectorSearchResult } from "./vector-db";
 import { embeddingService } from "./embeddings";
 
 export interface CompanyContext {
@@ -114,10 +115,9 @@ export class RAGService {
     let currentCompanyProfileChunk: VectorSearchResult[] = [];
     if ((company as any).id) {
       currentCompanyProfileChunk = await knowledgeBase.searchRelevantContext(
-        "",
+        `company profile ${company.name} ${company.industry}`,
         company.industry,
-        1,
-        { company_id: (company as any).id, type: "company_profile" }
+        1
       );
     }
     // Merge, avoiding duplicates
@@ -621,6 +621,7 @@ Return ONLY the JSON array, no explanation or markdown.`;
     businessChallenges: string[],
     contextPrompt: string
   ): Promise<any> {
+    const startTime = Date.now();
     const analysisPrompt = `# COMPREHENSIVE SAP ANALYSIS WITH DETAILED STRUCTURE
 # CRITICAL: Generate a complete, detailed analysis matching the traditional approach quality
 # Use the retrieved context to generate a comprehensive analysis with all required sections
@@ -684,8 +685,15 @@ Return ONLY the JSON object, no explanation or markdown.`;
       model: openai("gpt-4o"),
       prompt: analysisPrompt,
       temperature: 0.2,
-      maxTokens: 12000,
+      maxTokens: 6000, // Reduced from 12000
     });
+
+    const endTime = Date.now();
+    console.log(
+      `⏱️ RAG Service: Comprehensive analysis LLM call took ${
+        endTime - startTime
+      }ms`
+    );
 
     // Log token usage
     if (usage) {

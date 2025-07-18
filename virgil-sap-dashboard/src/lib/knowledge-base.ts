@@ -332,11 +332,16 @@ export class KnowledgeBase {
   private createProductChunks(product: SAPProduct): EmbeddingChunk[] {
     const chunks: EmbeddingChunk[] = [];
 
+    // Helper to sanitize product_name for ASCII-only Pinecone IDs
+    const safeName = product.product_name
+      .toLowerCase()
+      .replace(/[^\x00-\x7F]/g, "") // Remove non-ASCII
+      .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with dash
+      .replace(/^-+|-+$/g, ""); // Trim leading/trailing dashes
+
     // Product overview chunk
     chunks.push({
-      id: `sap-product-${product.product_name
-        .toLowerCase()
-        .replace(/\s+/g, "-")}-overview`,
+      id: `sap-product-${safeName}-overview`,
       content: `SAP ${product.product_name}: ${
         product.description
       }. This product targets industries including ${product.target_industries.join(
@@ -353,9 +358,7 @@ export class KnowledgeBase {
     // Features chunk
     if (product.key_features.length > 0) {
       chunks.push({
-        id: `sap-product-${product.product_name
-          .toLowerCase()
-          .replace(/\s+/g, "-")}-features`,
+        id: `sap-product-${safeName}-features`,
         content: `Key features of SAP ${
           product.product_name
         }: ${product.key_features.join(". ")}.`,
@@ -370,9 +373,7 @@ export class KnowledgeBase {
     // Benefits chunk
     if (product.benefits.length > 0) {
       chunks.push({
-        id: `sap-product-${product.product_name
-          .toLowerCase()
-          .replace(/\s+/g, "-")}-benefits`,
+        id: `sap-product-${safeName}-benefits`,
         content: `Benefits of SAP ${
           product.product_name
         }: ${product.benefits.join(". ")}.`,
@@ -386,9 +387,7 @@ export class KnowledgeBase {
 
     // Implementation chunk
     chunks.push({
-      id: `sap-product-${product.product_name
-        .toLowerCase()
-        .replace(/\s+/g, "-")}-implementation`,
+      id: `sap-product-${safeName}-implementation`,
       content: `SAP ${product.product_name} implementation: Complexity is ${product.implementation_complexity}, typical ROI is ${product.typical_roi}, time to value is ${product.time_to_value}, and cost range is ${product.cost_range}.`,
       metadata: {
         type: "sap_product",

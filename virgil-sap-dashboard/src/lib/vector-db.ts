@@ -76,10 +76,25 @@ export class VectorDatabase {
       const chunksToEmbed = chunks.filter((chunk) => !chunk.embedding);
       if (chunksToEmbed.length > 0) {
         const texts = chunksToEmbed.map((chunk) => chunk.content);
-        const embeddings = await embeddingService.generateEmbeddings(texts);
-        chunksToEmbed.forEach((chunk, i) => {
-          chunk.embedding = embeddings[i];
-        });
+        // Batch embedding in even smaller chunks
+        const batchSize = 5;
+        for (let i = 0; i < texts.length; i += batchSize) {
+          const batchTexts = texts.slice(i, i + batchSize);
+          try {
+            const embeddings = await embeddingService.generateEmbeddings(
+              batchTexts
+            );
+            batchTexts.forEach((_, j) => {
+              chunksToEmbed[i + j].embedding = embeddings[j];
+            });
+          } catch (err) {
+            console.error(
+              `Error generating embeddings for batch ${i / batchSize + 1}:`,
+              err
+            );
+            throw err;
+          }
+        }
       }
       // Prepare vectors for Pinecone
       const vectors = chunks.map((chunk) => ({
@@ -90,10 +105,10 @@ export class VectorDatabase {
           ...chunk.metadata,
         },
       }));
-      // Upsert in batches
-      const batchSize = 100;
-      for (let i = 0; i < vectors.length; i += batchSize) {
-        const batch = vectors.slice(i, i + batchSize);
+      // Upsert in smaller batches
+      const upsertBatchSize = 10;
+      for (let i = 0; i < vectors.length; i += upsertBatchSize) {
+        const batch = vectors.slice(i, i + upsertBatchSize);
         await index.upsert(batch);
       }
       console.log(`Upserted ${vectors.length} vectors to Pinecone`);
@@ -155,4 +170,3 @@ export class VectorDatabase {
 }
 
 export const vectorDb = new VectorDatabase();
- 
