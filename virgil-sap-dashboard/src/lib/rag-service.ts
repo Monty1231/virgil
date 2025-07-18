@@ -35,7 +35,17 @@ export interface RAGContext {
   fileContent?: string;
 }
 
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+}
+
 export class RAGService {
+  private readonly GPT4O_INPUT_COST_PER_1M = 5.0;
+  private readonly GPT4O_OUTPUT_COST_PER_1M = 15.0;
+
   async generateAnalysis(companyContext: CompanyContext): Promise<any> {
     try {
       console.log("🔍 RAG Service: Starting analysis for", companyContext.name);
@@ -203,6 +213,24 @@ export class RAGService {
         "Process optimization",
       ]
     );
+  }
+
+  private calculateTokenCost(usage: TokenUsage): number {
+    const inputCost =
+      (usage.promptTokens / 1000000) * this.GPT4O_INPUT_COST_PER_1M;
+    const outputCost =
+      (usage.completionTokens / 1000000) * this.GPT4O_OUTPUT_COST_PER_1M;
+    return inputCost + outputCost;
+  }
+
+  private logTokenUsage(usage: TokenUsage, step: string): void {
+    const cost = this.calculateTokenCost(usage);
+    console.log(`💰 ${step} Token Usage:`, {
+      prompt: usage.promptTokens,
+      completion: usage.completionTokens,
+      total: usage.totalTokens,
+      cost: `$${cost.toFixed(4)}`,
+    });
   }
 
   private async generateAnalysisWithRAG(ragContext: RAGContext): Promise<any> {
@@ -474,12 +502,25 @@ Return ONLY the array, no extra text. Example:
   }
 ]`;
 
-    const { text: solutionsTextRaw } = await generateText({
+    const { text: solutionsTextRaw, usage } = await generateText({
       model: openai("gpt-4o"),
       prompt: solutionsPrompt,
       temperature: 0.2,
       maxTokens: 15000,
     });
+
+    // Log token usage
+    if (usage) {
+      this.logTokenUsage(
+        {
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          cost: 0, // Will be calculated by logTokenUsage
+        },
+        "Solutions Generation"
+      );
+    }
 
     let solutionsText = solutionsTextRaw.trim();
     if (solutionsText.startsWith("```json")) {
@@ -535,12 +576,25 @@ Each challenge should include:
 
 Return ONLY the JSON array, no explanation or markdown.`;
 
-    const { text: challengesTextRaw } = await generateText({
+    const { text: challengesTextRaw, usage } = await generateText({
       model: openai("gpt-4o"),
       prompt: challengesPrompt,
       temperature: 0.2,
       maxTokens: 2000,
     });
+
+    // Log token usage
+    if (usage) {
+      this.logTokenUsage(
+        {
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          cost: 0, // Will be calculated by logTokenUsage
+        },
+        "Business Challenges Generation"
+      );
+    }
 
     let challengesText = challengesTextRaw.trim();
     if (challengesText.startsWith("```json")) {
@@ -626,12 +680,25 @@ Generate a comprehensive analysis object with the following detailed structure:
 
 Return ONLY the JSON object, no explanation or markdown.`;
 
-    const { text: analysisTextRaw } = await generateText({
+    const { text: analysisTextRaw, usage } = await generateText({
       model: openai("gpt-4o"),
       prompt: analysisPrompt,
       temperature: 0.2,
       maxTokens: 12000,
     });
+
+    // Log token usage
+    if (usage) {
+      this.logTokenUsage(
+        {
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          cost: 0, // Will be calculated by logTokenUsage
+        },
+        "Comprehensive Analysis Generation"
+      );
+    }
 
     let analysisText = analysisTextRaw.trim();
     if (analysisText.startsWith("```json")) {
