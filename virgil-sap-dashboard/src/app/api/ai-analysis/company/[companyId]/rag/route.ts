@@ -18,17 +18,6 @@ export async function GET(
       companyId
     );
 
-    // Initialize knowledge base if needed (skip if already populated)
-    try {
-      await knowledgeBase.initialize();
-    } catch (error: any) {
-      console.log(
-        "🤖 RAG AI Analysis: Knowledge base initialization failed, continuing with existing data:",
-        error?.message || "Unknown error"
-      );
-      // Continue with existing knowledge base data
-    }
-
     // Fetch the company record with all available data
     const companyResult = await sql.query(
       `SELECT 
@@ -110,6 +99,39 @@ export async function GET(
 
     // Log the raw LLM output for business case/financials
     console.log("🤖 RAW ANALYSIS OUTPUT:", JSON.stringify(analysis, null, 2));
+
+    // Normalize implementationRoadmap fields to always be arrays
+    if (analysis && Array.isArray(analysis.implementationRoadmap)) {
+      analysis.implementationRoadmap = analysis.implementationRoadmap.map(
+        (phase) => ({
+          ...phase,
+          activities: Array.isArray(phase.activities)
+            ? phase.activities
+            : typeof phase.activities === "string"
+            ? phase.activities
+                .split(/,|\n|\r/)
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
+          deliverables: Array.isArray(phase.deliverables)
+            ? phase.deliverables
+            : typeof phase.deliverables === "string"
+            ? phase.deliverables
+                .split(/,|\n|\r/)
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
+          resources: Array.isArray(phase.resources)
+            ? phase.resources
+            : typeof phase.resources === "string"
+            ? phase.resources
+                .split(/,|\n|\r/)
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
+        })
+      );
+    }
 
     // Improved fallback logic
     if (

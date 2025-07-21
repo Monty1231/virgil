@@ -75,10 +75,14 @@ export class RAGService {
       : this.getDefaultChallenges(company.industry);
 
     // Retrieve relevant SAP products
-    const relevantProducts = await knowledgeBase.getSAPProductRecommendations(
+    let relevantProducts = await knowledgeBase.getSAPProductRecommendations(
       company.industry,
       challenges
     );
+    // Only use the top 1-3 SAP products from the vector search
+    relevantProducts = relevantProducts
+      .filter((result) => result.metadata.type === "sap_product")
+      .slice(0, 3);
 
     // Retrieve industry insights
     const industryInsights = await knowledgeBase.getIndustryInsights(
@@ -449,6 +453,7 @@ Number of Deals: ${company.deals.length}`;
 # CONTEXT FROM KNOWLEDGE BASE:
 ${contextPrompt}
 
+# CRITICAL: You MUST recommend exactly 3 SAP modules in the array. Do NOT recommend 1, 2, or more than 3 modules.
 Return ONLY a valid JSON array. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks.
 Generate ONLY the recommendedSolutions array for this company. For each SAP module, provide:
 - module (string, must match a real SAP product from the context)
@@ -472,35 +477,7 @@ All numeric projections (estimatedROI, estimatedCostMin, estimatedCostMax, etc.)
 
 Do NOT include a module unless you can provide ALL required fields with real, nonzero, non-null values and detailed justifications. Do NOT include any projections as null, zero, or placeholder. If you cannot estimate a value, use industry logic and the provided data to make a realistic projection.
 
-Return ONLY the array, no extra text. Example:
-[
-  {
-    "module": "SAP Customer Experience",
-    "fitJustification": "SAP Customer Experience is the ideal solution for your company's customer relationship challenges. With advanced analytics and personalized engagement capabilities, this module will transform your customer interactions and drive measurable revenue growth. The integrated approach ensures seamless data flow across all customer touchpoints, providing the competitive advantage you need in today's market.",
-    "priority": 1,
-    "estimatedROI": 22.5,
-    "timeToValue": "12-18 months",
-    "estimatedCostMin": 500000,
-    "estimatedCostMax": 2000000,
-    "keyBenefits": [
-      "Advanced customer analytics and insights",
-      "Personalized customer engagement",
-      "Integrated omnichannel experience"
-    ],
-    "businessImpact": "Transform customer relationships and drive 25% revenue growth through personalized engagement and data-driven insights.",
-    "riskMitigation": [
-      "SAP's proven implementation methodology",
-      "Comprehensive change management support",
-      "Dedicated customer success team"
-    ],
-    "successMetrics": [
-      "25% increase in customer retention",
-      "30% reduction in sales cycle time",
-      "40% improvement in customer satisfaction scores"
-    ],
-    "moduleAnalysisContext": "EXECUTIVE SUMMARY\n\nSAP Customer Experience represents a transformative strategic investment opportunity for your organization to revolutionize customer relationship management and drive unprecedented business growth in today's competitive digital landscape. This comprehensive SAP module addresses critical business challenges through advanced analytics, real-time engagement capabilities, and integrated omnichannel experiences that deliver significant ROI and competitive differentiation. The module's sophisticated AI-powered insights and predictive analytics capabilities position your organization to achieve market leadership while building sustainable customer relationships that drive long-term revenue growth and operational excellence.\n\nBUSINESS CHALLENGES ADDRESSED\n\nSAP Customer Experience directly addresses your company's unique business challenges through its sophisticated customer journey mapping and predictive analytics engine, which is specifically designed to overcome the complex obstacles faced by modern enterprises in delivering personalized, data-driven customer experiences. The module transforms customer interactions by enabling anticipation of customer needs and delivery of personalized experiences that significantly reduce sales cycle times and improve customer satisfaction across all touchpoints. SAP Customer Experience provides the competitive advantage your organization needs through its integrated omnichannel approach, ensuring seamless data flow across all customer touchpoints while addressing critical pain points such as data silos, inconsistent customer experiences, and inefficient marketing processes that currently limit your organization's growth potential and market competitiveness."
-  }
-]`;
+Return ONLY the array, no extra text.`;
 
     const { text: solutionsTextRaw, usage } = await generateText({
       model: openai("gpt-4o"),

@@ -89,7 +89,7 @@ export class KnowledgeBase {
     console.log(`Populated knowledge base with ${chunks.length} chunks`);
   }
 
-  private async getSAPProductsFromDB(): Promise<SAPProduct[]> {
+  async getSAPProductsFromDB(): Promise<SAPProduct[]> {
     try {
       const { rows } = await sql.query("SELECT * FROM sap_products");
       console.log("Found SAP products in DB:", rows.length);
