@@ -249,14 +249,14 @@ export class RAGService {
     const contextPrompt = this.buildContextPrompt(ragContext);
 
     // Generate solutions with RAG context
-    const solutions = await this.generateSolutionsWithRAG(
+    const generatedSolutions = await this.generateSolutionsWithRAG(
       ragContext,
       contextPrompt
     );
 
     // Log the raw LLM output for solutions
-    if (typeof solutions === "string") {
-      console.log("🤖 LLM RAW OUTPUT (solutions):", solutions);
+    if (typeof generatedSolutions === "string") {
+      console.log("🤖 LLM RAW OUTPUT (solutions):", generatedSolutions);
     }
 
     // Generate business challenges
@@ -276,7 +276,7 @@ export class RAGService {
     // Generate comprehensive analysis
     const analysis = await this.generateComprehensiveAnalysisWithRAG(
       ragContext,
-      solutions,
+      generatedSolutions,
       businessChallenges,
       contextPrompt
     );
@@ -289,8 +289,101 @@ export class RAGService {
     // Flatten the structure to match frontend expectations
     const flattenedAnalysis = {
       // Core fields expected by frontend
-      recommendedSolutions:
-        analysis?.coreAnalysisFields?.recommendedSolutions || solutions || [],
+      recommendedSolutions: (() => {
+        // Use the solutions generated in the first step, not from the comprehensive analysis
+        const finalSolutions = generatedSolutions || [];
+        console.log(
+          "🔍 RAG Service: Recommended solutions structure:",
+          JSON.stringify(finalSolutions, null, 2)
+        );
+
+        // Ensure each solution has the required fields
+        return finalSolutions.map((solution: any) => ({
+          module: solution.module || solution.product_name || "SAP Module",
+          fit: solution.fit || "Medium",
+          fitJustification: solution.fitJustification || "",
+          priority: solution.priority || 1,
+          estimatedROI: solution.estimatedROI || 25,
+          calculatedROI: solution.calculatedROI || solution.estimatedROI || 25,
+          timeToValue: solution.timeToValue || "6-12 months",
+          estimatedCostMin: solution.estimatedCostMin || 100000,
+          estimatedCostMax: solution.estimatedCostMax || 500000,
+          costAnalysis: solution.costAnalysis || {
+            estimatedCostMin: solution.estimatedCostMin || 100000,
+            estimatedCostMax: solution.estimatedCostMax || 500000,
+            calculationMethodology: "Industry standard estimation",
+          },
+          keyBenefits: solution.keyBenefits || [],
+          quantifiedBenefits: solution.quantifiedBenefits || [],
+          implementationComplexity:
+            solution.implementationComplexity || "Medium",
+          technicalRequirements: solution.technicalRequirements || [],
+          businessImpact: solution.businessImpact || "",
+          riskMitigation: solution.riskMitigation || [],
+          riskAssessment: solution.riskAssessment || {
+            implementationRisks: [],
+            mitigationStrategies: [],
+          },
+          successMetrics: solution.successMetrics || [],
+          moduleAnalysisContext: (() => {
+            const context =
+              solution.moduleAnalysisContext ||
+              solution.analysisContext ||
+              solution.context ||
+              "";
+
+            // Post-process the context to ensure proper formatting
+            const formatContext = (text: string) => {
+              if (!text) return "";
+
+              // Ensure proper section breaks
+              let formatted = text
+                .replace(/(EXECUTIVE SUMMARY:)/g, "\n\n$1")
+                .replace(/(BUSINESS CHALLENGES ADDRESSED:)/g, "\n\n$1")
+                .replace(/(SOLUTION OVERVIEW:)/g, "\n\n$1")
+                .replace(/(BUSINESS IMPACT & ROI:)/g, "\n\n$1")
+                .replace(/(IMPLEMENTATION STRATEGY:)/g, "\n\n$1")
+                .replace(/(COMPETITIVE ADVANTAGES:)/g, "\n\n$1")
+                .replace(/(CONCLUSION:)/g, "\n\n$1")
+                .replace(/^\n+/, "") // Remove leading newlines
+                .trim();
+
+              // If no sections found, add basic structure
+              if (!formatted.match(/[A-Z\s]+:/)) {
+                const sentences = formatted
+                  .split(/[.!?]+/)
+                  .filter((s) => s.trim().length > 20);
+                if (sentences.length > 0) {
+                  formatted = `EXECUTIVE SUMMARY:\n\n${sentences
+                    .slice(0, 3)
+                    .join(
+                      ". "
+                    )}.\n\nBUSINESS CHALLENGES ADDRESSED:\n\n${sentences
+                    .slice(3, 6)
+                    .join(". ")}.\n\nSOLUTION OVERVIEW:\n\n${sentences
+                    .slice(6, 9)
+                    .join(". ")}.`;
+                }
+              }
+
+              return formatted;
+            };
+
+            const formattedContext = formatContext(context);
+            console.log(
+              `🔍 Module Analysis Context for ${solution.module}:`,
+              formattedContext.substring(0, 200) + "..."
+            );
+            return formattedContext;
+          })(),
+          reasoning: solution.reasoning || "",
+          traceability: solution.traceability || [],
+          aiAnalysisMethodology: solution.aiAnalysisMethodology || "",
+          executiveSummary: solution.executiveSummary || "",
+          analysisContext: solution.analysisContext || solution.context || "",
+          context: solution.context || "",
+        }));
+      })(),
       businessChallenges: (() => {
         // Ensure businessChallenges are always strings
         const challenges =
@@ -327,6 +420,9 @@ export class RAGService {
         return "Low";
       })(),
 
+      // Key success factors
+      keySuccessFactors: analysis?.coreAnalysisFields?.keySuccessFactors || [],
+
       // Additional detailed sections
       companyProfileAnalysis:
         analysis?.detailedAnalysisSections?.companyProfileAnalysis || "",
@@ -360,7 +456,7 @@ export class RAGService {
           ?.duration || "12-18 months",
       recommendations: (
         analysis?.coreAnalysisFields?.recommendedSolutions ||
-        solutions ||
+        generatedSolutions ||
         []
       ).map((s: any) => s.module || s.product_name || "SAP Module"),
     };
@@ -469,7 +565,75 @@ Generate ONLY the recommendedSolutions array for this company. For each SAP modu
 - businessImpact (string written from a SALES PERSPECTIVE, emphasizing the transformative business impact and value this SAP module will deliver)
 - riskMitigation (array of 3+ specific strategies to mitigate implementation risks, emphasizing how SAP's expertise and proven methodologies ensure successful delivery)
 - successMetrics (array of 3+ measurable success metrics that demonstrate the value and ROI of this SAP module for this company)
-- moduleAnalysisContext (MUST be 1200+ characters, structured as a formal business report written from a SALES PERSPECTIVE to convince the client to purchase this specific SAP module. CRITICAL: You MUST mention the specific SAP module name at least 5 times and describe its unique features and capabilities in detail. Structure the analysis as a formal report with the following sections: 1) EXECUTIVE SUMMARY - Comprehensive overview of the SAP module's strategic value, market positioning, and business transformation potential (minimum 150 characters), 2) BUSINESS CHALLENGES ADDRESSED - Detailed analysis of how this specific SAP module addresses the company's unique challenges, industry-specific issues, and competitive pressures (minimum 200 characters), 3) SOLUTION OVERVIEW - Comprehensive overview of the SAP module's features and capabilities (use 3-4 bullet points for key features), 4) BUSINESS IMPACT & ROI - Detailed discussion of tangible business outcomes and success metrics with specific projections and industry benchmarks (use 3-4 bullet points for key metrics), 5) IMPLEMENTATION STRATEGY - Comprehensive implementation approach with risk mitigation, timeline considerations, and change management strategies (use 3-4 bullet points for key steps), 6) COMPETITIVE ADVANTAGES - Strategic positioning and competitive differentiation with market analysis and industry comparisons (minimum 150 characters), 7) CONCLUSION - Strategic value and investment justification with long-term vision and growth potential (minimum 150 characters). Use formal business language with clear section headings in ALL CAPS. Reference specific company data, industry benchmarks, and business challenges from the retrieved context. Format with clear section breaks using double line breaks and use bullet points (•) for key lists. DO NOT write generic analysis - be specific about the module's features and benefits.)
+- moduleAnalysisContext (MUST be 2500+ characters, structured as a comprehensive business report written from a SALES PERSPECTIVE to convince the client to purchase this specific SAP module. CRITICAL: You MUST mention the specific SAP module name at least 8 times and describe its unique features and capabilities in extensive detail. CRITICAL: You MUST follow the exact formatting structure below with proper section breaks and bullet points. This is the MAIN PART of the analysis report and should be extremely detailed and comprehensive. 
+
+STRUCTURE THE ANALYSIS WITH THESE EXACT SECTIONS:
+
+1) EXECUTIVE SUMMARY: - Comprehensive strategic overview of the SAP module's value proposition, market positioning, business transformation potential, and competitive landscape analysis. Include specific industry insights, market trends, and strategic implications for the company's long-term growth and competitive positioning (minimum 300 characters)
+
+2) BUSINESS CHALLENGES ADDRESSED: - In-depth analysis of how this specific SAP module addresses the company's unique challenges, industry-specific issues, competitive pressures, regulatory requirements, and operational inefficiencies. Include detailed problem statements, impact analysis, and specific pain points that the module resolves (minimum 400 characters)
+
+3) SOLUTION OVERVIEW: - Comprehensive technical and functional overview of the SAP module's features, capabilities, architecture, and integration capabilities. Include detailed feature descriptions, technical specifications, scalability considerations, and how the module fits into the company's existing technology landscape (use 6-8 bullet points for key features with detailed explanations)
+
+4) BUSINESS IMPACT & ROI: - Extensive discussion of tangible business outcomes, success metrics, financial projections, and industry benchmarks. Include detailed ROI calculations, cost-benefit analysis, performance improvements, efficiency gains, and specific quantifiable benefits with realistic projections based on industry data (use 6-8 bullet points for key metrics with detailed quantification)
+
+5) IMPLEMENTATION STRATEGY: - Comprehensive implementation roadmap with detailed phases, risk mitigation strategies, timeline considerations, change management approaches, resource requirements, and success factors. Include specific implementation methodologies, best practices, and lessons learned from similar deployments (use 6-8 bullet points for key steps with detailed explanations)
+
+6) COMPETITIVE ADVANTAGES: - Strategic positioning analysis with detailed competitive differentiation, market analysis, industry comparisons, and unique value propositions. Include specific advantages over competitors, market positioning, and how the module provides sustainable competitive advantages (minimum 300 characters)
+
+7) CONCLUSION: - Strategic value proposition and investment justification with long-term vision, growth potential, risk assessment, and strategic recommendations. Include executive-level summary of key benefits, strategic implications, and next steps for implementation (minimum 300 characters)
+
+FORMATTING REQUIREMENTS:
+- Use EXACT section headers in ALL CAPS ending with colons (e.g., "EXECUTIVE SUMMARY:", "BUSINESS CHALLENGES ADDRESSED:")
+- Separate each section with double line breaks (two newlines)
+- Use bullet points with "•" symbol for lists within sections
+- Use formal business language with clear, professional tone
+- Reference specific company data, industry benchmarks, and business challenges from the retrieved context
+- DO NOT write generic analysis - be specific about the module's features and benefits
+
+EXAMPLE FORMAT:
+EXECUTIVE SUMMARY:
+
+This section provides a comprehensive strategic overview of the SAP module's value proposition, market positioning, and business transformation potential. It should include specific industry insights, market trends, competitive landscape analysis, and strategic implications for the company's long-term growth and competitive positioning. The analysis should demonstrate deep understanding of the company's industry context and how the SAP module positions them for future success.
+
+BUSINESS CHALLENGES ADDRESSED:
+
+This section provides an in-depth analysis of how the specific SAP module addresses the company's unique challenges, industry-specific issues, competitive pressures, regulatory requirements, and operational inefficiencies. It should include detailed problem statements, impact analysis, specific pain points that the module resolves, and how it addresses both current and future business challenges. The analysis should be specific to the company's industry, size, and current situation.
+
+SOLUTION OVERVIEW:
+
+• Advanced feature 1 with comprehensive technical description, integration capabilities, and business benefits
+• Scalable architecture feature with detailed specifications, performance characteristics, and deployment considerations
+• Industry-specific functionality with detailed use cases, compliance features, and competitive advantages
+• Integration capabilities with existing systems, data migration strategies, and interoperability features
+• Advanced analytics and reporting features with detailed dashboard capabilities and business intelligence tools
+• Security and compliance features with detailed governance, risk management, and regulatory compliance capabilities
+
+BUSINESS IMPACT & ROI:
+
+• Operational efficiency improvement of 25-35% through process automation and streamlined workflows
+• Cost reduction of $2-4M annually through reduced manual processes and improved resource utilization
+• Compliance risk reduction of 40-60% through automated controls and real-time monitoring capabilities
+• Customer satisfaction improvement of 15-25% through faster response times and improved service quality
+• Revenue growth potential of 10-20% through enhanced capabilities and market expansion opportunities
+• Time-to-market acceleration of 30-50% through streamlined processes and improved collaboration
+
+IMPLEMENTATION STRATEGY:
+
+• Phase 1: Comprehensive assessment and planning with detailed requirements gathering, gap analysis, and stakeholder alignment
+• Phase 2: Technical architecture design and system configuration with detailed integration planning and data migration strategies
+• Phase 3: Pilot implementation and testing with comprehensive user acceptance testing and performance validation
+• Phase 4: Full deployment and change management with detailed training programs and organizational readiness initiatives
+• Phase 5: Optimization and continuous improvement with ongoing monitoring, performance tuning, and enhancement planning
+• Risk mitigation strategies including detailed contingency planning, rollback procedures, and stakeholder communication plans
+
+COMPETITIVE ADVANTAGES:
+
+This section covers strategic positioning analysis with detailed competitive differentiation, market analysis, industry comparisons, and unique value propositions. It should include specific advantages over competitors, market positioning, and how the module provides sustainable competitive advantages. The analysis should demonstrate understanding of the competitive landscape and how the SAP module creates unique value that competitors cannot easily replicate.
+
+CONCLUSION:
+
+This section provides strategic value proposition and investment justification with long-term vision, growth potential, risk assessment, and strategic recommendations. It should include an executive-level summary of key benefits, strategic implications, and next steps for implementation. The conclusion should be compelling and provide clear justification for the investment decision.
 
 All numeric projections (estimatedROI, estimatedCostMin, estimatedCostMax, etc.) must be uniquely calculated for this company, using the provided company profile, retrieved context, and deal pipeline data. Do NOT use default, placeholder, or repeated values. Each number must be justified by the data and context provided above.
 
@@ -483,7 +647,7 @@ Return ONLY the array, no extra text.`;
       model: openai("gpt-4o"),
       prompt: solutionsPrompt,
       temperature: 0.2,
-      maxTokens: 15000,
+      maxTokens: 16000,
     });
 
     // Log token usage
@@ -618,6 +782,7 @@ Generate a comprehensive analysis object with the following detailed structure:
 ### 1. Core Analysis Fields:
 - businessChallenges (use the provided array, ensure each challenge is 100+ characters)
 - recommendedSolutions (use the provided array)
+- keySuccessFactors (array of 3-5 key factors that contribute to SAP fit success for this company)
 - overallFit (string: "Excellent", "High", "Medium", "Low")
 
 ### 2. Detailed Analysis Sections:
@@ -631,12 +796,22 @@ Generate a comprehensive analysis object with the following detailed structure:
 
 ### 4. Implementation & Strategy:
 - implementationRoadmap (array with 5-7 phases, each with: phase, duration, activities, deliverables, resources, calculatedCost)
+  * CRITICAL: Each phase must be specifically tailored to the recommended SAP modules for this company
+  * Activities should reference specific SAP module features, configurations, and integrations
+  * Deliverables should include module-specific outputs (e.g., "SAP S/4HANA Finance configuration", "SAP SuccessFactors employee portal setup")
+  * Resources should specify SAP module experts, technical roles, and company stakeholders
+  * Duration should be realistic based on company size, complexity, and module requirements
+  * CalculatedCost should reflect actual SAP module licensing, implementation, and training costs
 - competitiveAnalysis (object with: sapAdvantages array, competitorComparison object, differentiators array)
 - riskFactors (array of 4-6 specific risk factors)
 - nextSteps (array of 3-5 actionable next steps)
 
 ### 5. Executive Summary:
 - executiveSummary (compelling sales-focused summary, 200+ characters)
+
+### 6. Module Analysis Context:
+- Note: moduleAnalysisContext is already generated for each recommended solution in the solutions generation step
+- Do NOT regenerate moduleAnalysisContext here as it will conflict with the existing structured analysis
 
 # CRITICAL REQUIREMENTS:
 - Reference specific insights from the retrieved knowledge base
@@ -645,9 +820,15 @@ Generate a comprehensive analysis object with the following detailed structure:
 - Write from a sales perspective to convince the client
 - Be specific and actionable with realistic numbers
 - Ensure all numeric fields are calculated based on company size, industry, and retrieved context
-- Structure implementation roadmap with realistic phases and timelines
+- Structure implementation roadmap with realistic phases and timelines that are SPECIFICALLY tailored to the recommended SAP modules
+- Each implementation phase must reference the actual SAP modules being implemented (e.g., "Phase 2: SAP S/4HANA Finance Module Configuration")
+- Activities and deliverables must be module-specific and reference actual SAP features and capabilities
 - Include comprehensive competitive analysis with specific advantages
 - Provide detailed risk factors with mitigation strategies
+- Use specific SAP product features and capabilities from the knowledge base
+- Include quantified benefits and ROI projections based on industry data
+- Provide technical integration details and system requirements
+- Address specific company challenges and how SAP solutions resolve them
 
 # FORMATTING REQUIREMENTS:
 - Use clear section headings and structured content
@@ -655,6 +836,8 @@ Generate a comprehensive analysis object with the following detailed structure:
 - Ensure all text fields meet minimum character requirements
 - Use realistic financial projections based on industry data
 - Reference specific SAP products and features from the retrieved context
+- Implementation roadmap phases must be named with specific SAP module references
+- All activities and deliverables must mention the specific SAP modules being implemented
 
 Return ONLY the JSON object, no explanation or markdown.`;
 

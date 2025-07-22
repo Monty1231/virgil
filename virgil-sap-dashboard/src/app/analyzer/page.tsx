@@ -972,6 +972,39 @@ export default function Analyzer() {
                   </Card>
                 </div>
 
+                {/* Fit Score Explanation */}
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-blue-600" />
+                      What is the Fit Score?
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-slate-700 text-sm leading-relaxed">
+                      <p>
+                        <strong>Fit Score</strong> is a comprehensive metric
+                        that estimates how well SAP solutions align with your
+                        company's unique profile, needs, and readiness for
+                        implementation. It considers factors such as your
+                        industry, company size, business challenges, budget,
+                        timeline, and the relevance of recommended SAP products.
+                        A higher Fit Score indicates a stronger match and a
+                        greater likelihood of successful SAP adoption and value
+                        realization.
+                      </p>
+                      <ul className="list-disc list-inside mt-3 text-slate-600 text-xs">
+                        <li>80%+ = Excellent fit for SAP solutions</li>
+                        <li>60-79% = Good fit, likely to benefit from SAP</li>
+                        <li>40-59% = Moderate fit, may require adjustments</li>
+                        <li>
+                          Below 40% = Limited fit, significant gaps to address
+                        </li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* AI Analysis Insights */}
                 <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
                   <CardHeader>
@@ -1410,19 +1443,185 @@ export default function Analyzer() {
                               </div>
 
                               {/* AI Analysis Context - always show first and check alternate field names */}
-                              <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200 col-span-full">
-                                <h5 className="font-bold text-indigo-800 mb-2 flex items-center gap-2">
-                                  <Brain className="h-4 w-4" />
+                              <div className="mb-6 p-6 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg border border-indigo-200 col-span-full shadow-sm">
+                                <h5 className="font-bold text-indigo-800 mb-4 flex items-center gap-2 text-lg">
+                                  <Brain className="h-5 w-5" />
                                   AI Analysis Context
                                 </h5>
-                                <div className="text-sm text-indigo-900 whitespace-pre-line">
-                                  {solution.moduleAnalysisContext ||
-                                    solution.analysisContext ||
-                                    solution.context || (
-                                      <span className="text-slate-400 italic">
-                                        No analysis context provided.
-                                      </span>
-                                    )}
+                                <div className="text-sm text-indigo-900 space-y-4">
+                                  {(() => {
+                                    const context =
+                                      solution.moduleAnalysisContext ||
+                                      solution.analysisContext ||
+                                      solution.context;
+
+                                    if (!context) {
+                                      return (
+                                        <span className="text-slate-400 italic">
+                                          No analysis context provided.
+                                        </span>
+                                      );
+                                    }
+
+                                    // Ensure context is a string
+                                    const contextString =
+                                      typeof context === "string"
+                                        ? context
+                                        : String(context);
+
+                                    // Function to improve formatting if sections are not properly separated
+                                    const improveFormatting = (text: string) => {
+                                      // If the text doesn't have proper section breaks, try to add them
+                                      if (!text.includes('\n\n')) {
+                                        // Look for common section patterns and add line breaks
+                                        return text
+                                          .replace(/(EXECUTIVE SUMMARY:)/g, '\n\n$1')
+                                          .replace(/(BUSINESS CHALLENGES ADDRESSED:)/g, '\n\n$1')
+                                          .replace(/(SOLUTION OVERVIEW:)/g, '\n\n$1')
+                                          .replace(/(BUSINESS IMPACT & ROI:)/g, '\n\n$1')
+                                          .replace(/(IMPLEMENTATION STRATEGY:)/g, '\n\n$1')
+                                          .replace(/(COMPETITIVE ADVANTAGES:)/g, '\n\n$1')
+                                          .replace(/(CONCLUSION:)/g, '\n\n$1')
+                                          .replace(/^\n+/, ''); // Remove leading newlines
+                                      }
+                                      return text;
+                                    };
+
+                                    // Function to handle completely unformatted text
+                                    const formatUnformattedText = (text: string) => {
+                                      // If no section headers are found, try to break it into readable chunks
+                                      if (!text.match(/[A-Z\s]+:/)) {
+                                        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+                                        const chunks = [];
+                                        let currentChunk = '';
+                                        
+                                        sentences.forEach((sentence, index) => {
+                                          currentChunk += sentence.trim() + '. ';
+                                          
+                                          // Break into chunks every 3-4 sentences
+                                          if ((index + 1) % 3 === 0 || index === sentences.length - 1) {
+                                            chunks.push(currentChunk.trim());
+                                            currentChunk = '';
+                                          }
+                                        });
+                                        
+                                        return chunks.map((chunk, idx) => 
+                                          `SECTION ${idx + 1}:\n\n${chunk}`
+                                        ).join('\n\n');
+                                      }
+                                      return text;
+                                    };
+
+                                    const improvedContextString = formatUnformattedText(improveFormatting(contextString));
+
+                                    // Debug: Log the formatting
+                                    console.log('🔍 AI Analysis Context Debug:', {
+                                      original: contextString.substring(0, 200) + '...',
+                                      improved: improvedContextString.substring(0, 200) + '...',
+                                      hasSections: improvedContextString.includes('\n\n'),
+                                      sectionCount: (improvedContextString.match(/[A-Z\s]+:/g) || []).length
+                                    });
+
+                                    // Split by section headers and format as paragraphs
+                                    const sections = improvedContextString
+                                      .split(/(?=^[A-Z\s]+:)/m)
+                                      .filter(Boolean);
+
+                                    return sections.map((section, idx) => {
+                                      const lines = section
+                                        .trim()
+                                        .split("\n")
+                                        .filter((line) => line.trim());
+                                      if (lines.length === 0) return null;
+
+                                      // Check if first line is a header (ends with colon and is all caps)
+                                      const firstLine = lines[0];
+                                      const isHeader =
+                                        firstLine.endsWith(":") &&
+                                        firstLine === firstLine.toUpperCase() &&
+                                        firstLine.length > 3;
+
+                                      if (isHeader) {
+                                        const header = firstLine;
+                                        const content = lines
+                                          .slice(1)
+                                          .join(" ")
+                                          .trim();
+
+                                        // Process content to handle bullet points and formatting
+                                        const processContent = (
+                                          text: string
+                                        ) => {
+                                          if (!text) return null;
+                                          
+                                          // Split by bullet points
+                                          const parts = text.split(/(?=•)/);
+                                          
+                                          if (parts.length > 1) {
+                                            // Has bullet points, render as list
+                                            return (
+                                              <div>
+                                                {parts.map((part, partIdx) => {
+                                                  const trimmedPart = part.trim();
+                                                  if (!trimmedPart) return null;
+                                                  
+                                                  if (trimmedPart.startsWith('•')) {
+                                                    // Bullet point
+                                                    return (
+                                                      <div key={partIdx} className="flex items-start mb-2">
+                                                        <span className="text-indigo-600 mr-2 mt-0.5">•</span>
+                                                        <span className="text-indigo-700 leading-relaxed">
+                                                          {trimmedPart.substring(1).trim()}
+                                                        </span>
+                                                      </div>
+                                                    );
+                                                  } else {
+                                                    // Regular text
+                                                    return (
+                                                      <p key={partIdx} className="text-indigo-700 leading-relaxed mb-2">
+                                                        {trimmedPart}
+                                                      </p>
+                                                    );
+                                                  }
+                                                })}
+                                              </div>
+                                            );
+                                          } else {
+                                            // No bullet points, render as regular paragraph
+                                            return (
+                                              <p className="text-indigo-700 leading-relaxed">
+                                                {text}
+                                              </p>
+                                            );
+                                          }
+                                        };
+
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className="mb-6 last:mb-0"
+                                          >
+                                            <h6 className="font-bold text-indigo-900 mb-3 text-base border-b border-indigo-200 pb-2">
+                                              {header}
+                                            </h6>
+                                            {processContent(content)}
+                                          </div>
+                                        );
+                                      } else {
+                                        // If no header, treat as regular paragraph
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className="mb-4 last:mb-0"
+                                          >
+                                            <p className="text-indigo-700 leading-relaxed">
+                                              {lines.join(" ")}
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                    });
+                                  })()}
                                 </div>
                               </div>
                               {solution.fitJustification && (
@@ -1437,17 +1636,19 @@ export default function Analyzer() {
                                 </div>
                               )}
                               {/* Executive Summary */}
-                              {(solution.executiveSummary || analysisData.executiveSummary) && (
-                                  <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200 col-span-full">
-                                    <h5 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
-                                      <Sparkles className="h-4 w-4" />
-                                      Executive Summary
-                                    </h5>
-                                    <div className="text-sm text-yellow-900 whitespace-pre-line">
-                                      {solution.executiveSummary || analysisData.executiveSummary}
-                                    </div>
+                              {(solution.executiveSummary ||
+                                analysisData.executiveSummary) && (
+                                <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200 col-span-full">
+                                  <h5 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4" />
+                                    Executive Summary
+                                  </h5>
+                                  <div className="text-sm text-yellow-900 whitespace-pre-line">
+                                    {solution.executiveSummary ||
+                                      analysisData.executiveSummary}
                                   </div>
-                                )}
+                                </div>
+                              )}
                               {/* AI Reasoning */}
                               {solution.reasoning && (
                                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200 col-span-full">

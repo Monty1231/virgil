@@ -103,14 +103,14 @@ export async function GET(
     // Normalize implementationRoadmap fields to always be arrays
     if (analysis && Array.isArray(analysis.implementationRoadmap)) {
       analysis.implementationRoadmap = analysis.implementationRoadmap.map(
-        (phase) => ({
+        (phase: any) => ({
           ...phase,
           activities: Array.isArray(phase.activities)
             ? phase.activities
             : typeof phase.activities === "string"
             ? phase.activities
                 .split(/,|\n|\r/)
-                .map((s) => s.trim())
+                .map((s: string) => s.trim())
                 .filter(Boolean)
             : [],
           deliverables: Array.isArray(phase.deliverables)
@@ -118,7 +118,7 @@ export async function GET(
             : typeof phase.deliverables === "string"
             ? phase.deliverables
                 .split(/,|\n|\r/)
-                .map((s) => s.trim())
+                .map((s: string) => s.trim())
                 .filter(Boolean)
             : [],
           resources: Array.isArray(phase.resources)
@@ -126,7 +126,7 @@ export async function GET(
             : typeof phase.resources === "string"
             ? phase.resources
                 .split(/,|\n|\r/)
-                .map((s) => s.trim())
+                .map((s: string) => s.trim())
                 .filter(Boolean)
             : [],
         })
