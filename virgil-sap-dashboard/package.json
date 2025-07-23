@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:all": "concurrently \"next dev --turbopack\" \"cd ../pipeline-export-backend && source venv/bin/activate && uvicorn export_pivot_api:app --reload\"",
-    "dev": "next dev --turbopack",
+    "dev:all": "concurrently \"next dev --turbopack\" \"cd ../deck-template && source venv311/bin/activate && python3 template_api.py\"",
+    "dev": "concurrently \"next dev --turbopack\" \"cd ../deck-template && source venv311/bin/activate && python3 template_api.py\"",
+    "dev:frontend": "next dev --turbopack",
+    "dev:backend": "cd ../deck-template && source venv311/bin/activate && python3 template_api.py",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
