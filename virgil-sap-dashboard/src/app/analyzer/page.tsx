@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -734,13 +735,13 @@ export default function Analyzer() {
                   </p>
                   <div className="flex gap-2 mt-2">
                     <Badge variant="outline" className="text-xs">
-                      {useSimpleRoute ? "Faster" : "Slower"}
+                      {useSimpleRoute ? "Faster" : "Faster"}
                     </Badge>
                     <Badge variant="outline" className="text-xs">
-                      {useSimpleRoute ? "More Accurate" : "Less Accurate"}
+                      {useSimpleRoute ? "More Accurate" : "More Accurate"}
                     </Badge>
                     <Badge variant="outline" className="text-xs">
-                      {useSimpleRoute ? "Cost Effective" : "More Expensive"}
+                      {useSimpleRoute ? "Cost Effective" : "Cost Effective"}
                     </Badge>
                   </div>
                 </div>
@@ -804,7 +805,13 @@ export default function Analyzer() {
                 <CardContent className="text-center py-12">
                   <div className="flex flex-col items-center gap-4">
                     <div className="relative">
-                      <Brain className="h-12 w-12 text-indigo-600 animate-pulse" />
+                      <Image
+                        src="/darkLogo.png"
+                        alt="Virgil AI"
+                        width={48}
+                        height={48}
+                        className="animate-pulse"
+                      />
                       <Sparkles className="h-6 w-6 text-amber-500 absolute -top-1 -right-1 animate-bounce" />
                     </div>
                     <div>
@@ -1470,57 +1477,107 @@ export default function Analyzer() {
                                         : String(context);
 
                                     // Function to improve formatting if sections are not properly separated
-                                    const improveFormatting = (text: string) => {
+                                    const improveFormatting = (
+                                      text: string
+                                    ) => {
                                       // If the text doesn't have proper section breaks, try to add them
-                                      if (!text.includes('\n\n')) {
+                                      if (!text.includes("\n\n")) {
                                         // Look for common section patterns and add line breaks
                                         return text
-                                          .replace(/(EXECUTIVE SUMMARY:)/g, '\n\n$1')
-                                          .replace(/(BUSINESS CHALLENGES ADDRESSED:)/g, '\n\n$1')
-                                          .replace(/(SOLUTION OVERVIEW:)/g, '\n\n$1')
-                                          .replace(/(BUSINESS IMPACT & ROI:)/g, '\n\n$1')
-                                          .replace(/(IMPLEMENTATION STRATEGY:)/g, '\n\n$1')
-                                          .replace(/(COMPETITIVE ADVANTAGES:)/g, '\n\n$1')
-                                          .replace(/(CONCLUSION:)/g, '\n\n$1')
-                                          .replace(/^\n+/, ''); // Remove leading newlines
+                                          .replace(
+                                            /(EXECUTIVE SUMMARY:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(BUSINESS CHALLENGES ADDRESSED:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(SOLUTION OVERVIEW:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(BUSINESS IMPACT & ROI:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(IMPLEMENTATION STRATEGY:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(COMPETITIVE ADVANTAGES:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(/(CONCLUSION:)/g, "\n\n$1")
+                                          .replace(/^\n+/, ""); // Remove leading newlines
                                       }
                                       return text;
                                     };
 
                                     // Function to handle completely unformatted text
-                                    const formatUnformattedText = (text: string) => {
+                                    const formatUnformattedText = (
+                                      text: string
+                                    ) => {
                                       // If no section headers are found, try to break it into readable chunks
                                       if (!text.match(/[A-Z\s]+:/)) {
-                                        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+                                        const sentences = text
+                                          .split(/[.!?]+/)
+                                          .filter((s) => s.trim().length > 20);
                                         const chunks = [];
-                                        let currentChunk = '';
-                                        
+                                        let currentChunk = "";
+
                                         sentences.forEach((sentence, index) => {
-                                          currentChunk += sentence.trim() + '. ';
-                                          
+                                          currentChunk +=
+                                            sentence.trim() + ". ";
+
                                           // Break into chunks every 3-4 sentences
-                                          if ((index + 1) % 3 === 0 || index === sentences.length - 1) {
+                                          if (
+                                            (index + 1) % 3 === 0 ||
+                                            index === sentences.length - 1
+                                          ) {
                                             chunks.push(currentChunk.trim());
-                                            currentChunk = '';
+                                            currentChunk = "";
                                           }
                                         });
-                                        
-                                        return chunks.map((chunk, idx) => 
-                                          `SECTION ${idx + 1}:\n\n${chunk}`
-                                        ).join('\n\n');
+
+                                        return chunks
+                                          .map(
+                                            (chunk, idx) =>
+                                              `SECTION ${idx + 1}:\n\n${chunk}`
+                                          )
+                                          .join("\n\n");
                                       }
                                       return text;
                                     };
 
-                                    const improvedContextString = formatUnformattedText(improveFormatting(contextString));
+                                    const improvedContextString =
+                                      formatUnformattedText(
+                                        improveFormatting(contextString)
+                                      );
 
                                     // Debug: Log the formatting
-                                    console.log('🔍 AI Analysis Context Debug:', {
-                                      original: contextString.substring(0, 200) + '...',
-                                      improved: improvedContextString.substring(0, 200) + '...',
-                                      hasSections: improvedContextString.includes('\n\n'),
-                                      sectionCount: (improvedContextString.match(/[A-Z\s]+:/g) || []).length
-                                    });
+                                    console.log(
+                                      "🔍 AI Analysis Context Debug:",
+                                      {
+                                        original:
+                                          contextString.substring(0, 200) +
+                                          "...",
+                                        improved:
+                                          improvedContextString.substring(
+                                            0,
+                                            200
+                                          ) + "...",
+                                        hasSections:
+                                          improvedContextString.includes(
+                                            "\n\n"
+                                          ),
+                                        sectionCount: (
+                                          improvedContextString.match(
+                                            /[A-Z\s]+:/g
+                                          ) || []
+                                        ).length,
+                                      }
+                                    );
 
                                     // Split by section headers and format as paragraphs
                                     const sections = improvedContextString
@@ -1553,32 +1610,45 @@ export default function Analyzer() {
                                           text: string
                                         ) => {
                                           if (!text) return null;
-                                          
+
                                           // Split by bullet points
                                           const parts = text.split(/(?=•)/);
-                                          
+
                                           if (parts.length > 1) {
                                             // Has bullet points, render as list
                                             return (
                                               <div>
                                                 {parts.map((part, partIdx) => {
-                                                  const trimmedPart = part.trim();
+                                                  const trimmedPart =
+                                                    part.trim();
                                                   if (!trimmedPart) return null;
-                                                  
-                                                  if (trimmedPart.startsWith('•')) {
+
+                                                  if (
+                                                    trimmedPart.startsWith("•")
+                                                  ) {
                                                     // Bullet point
                                                     return (
-                                                      <div key={partIdx} className="flex items-start mb-2">
-                                                        <span className="text-indigo-600 mr-2 mt-0.5">•</span>
+                                                      <div
+                                                        key={partIdx}
+                                                        className="flex items-start mb-2"
+                                                      >
+                                                        <span className="text-indigo-600 mr-2 mt-0.5">
+                                                          •
+                                                        </span>
                                                         <span className="text-indigo-700 leading-relaxed">
-                                                          {trimmedPart.substring(1).trim()}
+                                                          {trimmedPart
+                                                            .substring(1)
+                                                            .trim()}
                                                         </span>
                                                       </div>
                                                     );
                                                   } else {
                                                     // Regular text
                                                     return (
-                                                      <p key={partIdx} className="text-indigo-700 leading-relaxed mb-2">
+                                                      <p
+                                                        key={partIdx}
+                                                        className="text-indigo-700 leading-relaxed mb-2"
+                                                      >
                                                         {trimmedPart}
                                                       </p>
                                                     );
@@ -2059,7 +2129,15 @@ export default function Analyzer() {
               !analysisError && (
                 <Card>
                   <CardContent className="text-center py-12">
-                    <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+                  <div className="flex justify-center items-center mb-4">
+                  <Image
+                      src="/darkLogo.png"
+                        alt="Virgil AI"
+                        width={48}
+                        height={48}
+                        className="animate-pulse"
+                      />
+                    </div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-2">
                       Ready to Generate Comprehensive Analysis
                     </h3>
@@ -2071,7 +2149,7 @@ export default function Analyzer() {
                     </p>
                     <Button
                       onClick={() => generateAnalysis(selectedCompanyId)}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="bg-primary hover:bg-primary/90"
                     >
                       <Play className="mr-2 h-4 w-4" />
                       Generate Comprehensive Analysis
@@ -2272,7 +2350,16 @@ export default function Analyzer() {
       {!selectedCompany && companies.length > 0 && !loading && (
         <Card>
           <CardContent className="text-center py-12">
-            <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+            <div className="flex justify-center items-center mb-4">
+            <Image
+                      src="/darkLogo.png"
+                        alt="Virgil AI"
+                        width={48}
+                        height={48}
+                        className="animate-pulse"
+                      />
+            </div>
+          
             <h3 className="text-lg font-semibold text-slate-900 mb-2">
               Select a Company for Comprehensive Analysis
             </h3>
