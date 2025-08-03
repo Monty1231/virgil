@@ -79,10 +79,36 @@ export class RAGService {
       company.industry,
       challenges
     );
-    // Only use the top 1-3 SAP products from the vector search
-    relevantProducts = relevantProducts
+
+    // Ensure unique products and limit to top 3
+    const uniqueProducts = relevantProducts
       .filter((result) => result.metadata.type === "sap_product")
+      .filter(
+        (result, index, self) =>
+          self.findIndex(
+            (p) => p.metadata.product_name === result.metadata.product_name
+          ) === index
+      )
       .slice(0, 3);
+
+    console.log("🔍 RAG Service: Retrieved SAP products for analysis:");
+    uniqueProducts.forEach((product, index) => {
+      console.log(
+        `  ${index + 1}. ${product.metadata.product_name} (${
+          product.metadata.category || "Unknown"
+        })`
+      );
+    });
+
+    // Log if no products found to help with debugging
+    if (uniqueProducts.length === 0) {
+      console.log(
+        "⚠️ WARNING: No SAP products found in vector search. This may indicate:"
+      );
+      console.log("  1. Database needs to be populated with more SAP products");
+      console.log("  2. Products need better industry targeting");
+      console.log("  3. Vector embeddings need to be regenerated");
+    }
 
     // Retrieve industry insights
     const industryInsights = await knowledgeBase.getIndustryInsights(
@@ -90,7 +116,7 @@ export class RAGService {
     );
 
     // Retrieve implementation guidance for top products
-    const topProducts = relevantProducts
+    const topProducts = uniqueProducts
       .filter((result) => result.metadata.type === "sap_product")
       .slice(0, 3);
 
@@ -162,7 +188,7 @@ export class RAGService {
     }
 
     console.log("🔍 RAG Service: Retrieved context:", {
-      products: relevantProducts.length,
+      products: uniqueProducts.length,
       insights: industryInsights.length,
       guidance: implementationGuidance.length,
       similarCompanies: allCompanyProfiles.length,
@@ -172,7 +198,7 @@ export class RAGService {
 
     return {
       company,
-      relevantProducts,
+      relevantProducts: uniqueProducts,
       industryInsights,
       implementationGuidance,
       companyProfiles: allCompanyProfiles,
@@ -549,10 +575,14 @@ Number of Deals: ${company.deals.length}`;
 # CONTEXT FROM KNOWLEDGE BASE:
 ${contextPrompt}
 
-# CRITICAL: You MUST recommend exactly 3 SAP modules in the array. Do NOT recommend 1, 2, or more than 3 modules.
+# CRITICAL: You MUST recommend exactly 3 SAP modules from the RELEVANT SAP PRODUCTS list above.
+# CRITICAL: The 'module' field MUST be one of the exact product names listed in the RELEVANT SAP PRODUCTS section.
+# CRITICAL: Do NOT invent or create generic SAP product names - use ONLY the specific products listed above.
+# CRITICAL: If fewer than 3 specific products are listed, you may recommend the same product multiple times with different use cases.
+
 Return ONLY a valid JSON array. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks.
 Generate ONLY the recommendedSolutions array for this company. For each SAP module, provide:
-- module (string, must match a real SAP product from the context)
+- module (string, MUST be one of the exact product names from the RELEVANT SAP PRODUCTS list above)
 - fitJustification (5+ sentences written from a SALES PERSPECTIVE, emphasizing why this specific SAP module is the best solution for this company's needs, highlighting unique benefits and competitive advantages, reference company data and retrieved context)
 - priority (number)
 - estimatedROI (realistic, nonzero number, e.g., 18.5)

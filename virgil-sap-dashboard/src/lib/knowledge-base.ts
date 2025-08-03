@@ -95,40 +95,30 @@ export class KnowledgeBase {
       console.log("Found SAP products in DB:", rows.length);
 
       return rows.map((row) => {
-        // Map database fields to expected interface
-        const complexity =
-          row.implementation_time_max > 12
-            ? "High"
-            : row.implementation_time_max > 6
-            ? "Medium"
-            : "Low";
+        // Map database fields to expected interface based on actual schema
+        const complexity = "Medium"; // Default since we don't have this field
+        const costRange = "$50,000-$500,000"; // Default range
+        const timeToValue = "6-12 months"; // Default timeline
 
-        const costRange = `$${Number(
-          row.base_price_range_min
-        ).toLocaleString()}-$${Number(
-          row.base_price_range_max
-        ).toLocaleString()}`;
-        const timeToValue = `${row.implementation_time_min}-${row.implementation_time_max} months`;
-
-        // Generate key features based on product category
+        // Generate key features based on product name analysis
         const keyFeatures = this.generateKeyFeatures(
-          row.product_category,
+          row.category || this.inferCategoryFromName(row.product_name),
           row.product_name
         );
         const benefits = this.generateBenefits(
-          row.product_category,
+          row.category || this.inferCategoryFromName(row.product_name),
           row.product_name
         );
         const useCases = this.generateUseCases(
-          row.product_category,
+          row.category || this.inferCategoryFromName(row.product_name),
           row.product_name
         );
 
         return {
           product_name: row.product_name,
-          description: row.description,
+          description: row.description || row.description_link || "",
           target_industries: row.target_industries || [],
-          key_features: keyFeatures,
+          key_features: row.key_features || keyFeatures,
           benefits: benefits,
           implementation_complexity: complexity,
           typical_roi: "15-25%",
@@ -632,10 +622,106 @@ export class KnowledgeBase {
     companyIndustry: string,
     challenges: string[]
   ): Promise<VectorSearchResult[]> {
-    const query = `SAP solutions for ${companyIndustry} industry addressing ${challenges.join(
-      ", "
-    )}`;
-    return await this.searchRelevantContext(query, companyIndustry, 10);
+    // Create more specific search queries
+    const queries = [
+      `SAP products for ${companyIndustry} industry`,
+      `SAP solutions ${companyIndustry} ${challenges.join(" ")}`,
+      `SAP ${companyIndustry} business solutions`,
+      `SAP products targeting ${companyIndustry} companies`,
+      // Add more generic queries to find relevant products
+      `SAP logistics supply chain solutions`,
+      `SAP procurement purchasing solutions`,
+      `SAP analytics business intelligence`,
+      `SAP customer relationship management`,
+      `SAP human resources workforce management`,
+    ];
+
+    console.log(`🔍 Searching for SAP products with queries:`, queries);
+
+    let allResults: VectorSearchResult[] = [];
+
+    // Try multiple queries to get better results
+    for (const query of queries) {
+      try {
+        const results = await this.searchRelevantContext(
+          query,
+          companyIndustry,
+          5
+        );
+        allResults.push(...results);
+      } catch (error) {
+        console.error(`Error searching with query "${query}":`, error);
+      }
+    }
+
+    // Remove duplicates and filter for SAP products
+    const uniqueResults = allResults.filter(
+      (result, index, self) =>
+        result.metadata.type === "sap_product" &&
+        self.findIndex(
+          (r) => r.metadata.product_name === result.metadata.product_name
+        ) === index
+    );
+
+    console.log(
+      `🔍 Found ${uniqueResults.length} unique SAP products for ${companyIndustry}`
+    );
+    uniqueResults.forEach((result) => {
+      console.log(
+        `  - ${result.metadata.product_name} (${
+          result.metadata.category || "Unknown"
+        })`
+      );
+    });
+
+    // If we still don't have enough results, try a broader search
+    if (uniqueResults.length < 3) {
+      console.log(
+        `🔍 Not enough specific products found, trying broader search...`
+      );
+      try {
+        const broaderResults = await this.searchRelevantContext(
+          "SAP products solutions modules",
+          undefined,
+          10
+        );
+        const additionalProducts = broaderResults.filter(
+          (result, index, self) =>
+            result.metadata.type === "sap_product" &&
+            self.findIndex(
+              (r) => r.metadata.product_name === result.metadata.product_name
+            ) === index &&
+            !uniqueResults.some(
+              (existing) =>
+                existing.metadata.product_name === result.metadata.product_name
+            )
+        );
+
+        uniqueResults.push(
+          ...additionalProducts.slice(0, 3 - uniqueResults.length)
+        );
+        console.log(
+          `🔍 Added ${additionalProducts.length} additional products from broader search`
+        );
+      } catch (error) {
+        console.error("Error in broader search:", error);
+      }
+    }
+
+    // Final deduplication to ensure no duplicates
+    const finalResults = uniqueResults.filter(
+      (result, index, self) =>
+        self.findIndex(
+          (r) => r.metadata.product_name === result.metadata.product_name
+        ) === index
+    );
+
+    console.log(`🔍 Final unique products: ${finalResults.length}`);
+    finalResults.forEach((result) => {
+      console.log(`  - ${result.metadata.product_name}`);
+    });
+
+    return finalResults;
   }
 
   async getIndustryInsights(industry: string): Promise<VectorSearchResult[]> {

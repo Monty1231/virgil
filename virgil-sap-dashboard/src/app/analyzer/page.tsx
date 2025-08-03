@@ -1276,7 +1276,7 @@ export default function Analyzer() {
                       .sort((a, b) => a.priority - b.priority)
                       .map((solution, index) => (
                         <Card
-                          key={solution.module}
+                          key={`${solution.module}-${index}`}
                           className="overflow-hidden bg-slate-50 border-slate-200 shadow-md rounded-xl"
                         >
                           <CardHeader>
@@ -2129,9 +2129,9 @@ export default function Analyzer() {
               !analysisError && (
                 <Card>
                   <CardContent className="text-center py-12">
-                  <div className="flex justify-center items-center mb-4">
-                  <Image
-                      src="/darkLogo.png"
+                    <div className="flex justify-center items-center mb-4">
+                      <Image
+                        src="/darkLogo.png"
                         alt="Virgil AI"
                         width={48}
                         height={48}
@@ -2351,15 +2351,15 @@ export default function Analyzer() {
         <Card>
           <CardContent className="text-center py-12">
             <div className="flex justify-center items-center mb-4">
-            <Image
-                      src="/darkLogo.png"
-                        alt="Virgil AI"
-                        width={48}
-                        height={48}
-                        className="animate-pulse"
-                      />
+              <Image
+                src="/darkLogo.png"
+                alt="Virgil AI"
+                width={48}
+                height={48}
+                className="animate-pulse"
+              />
             </div>
-          
+
             <h3 className="text-lg font-semibold text-slate-900 mb-2">
               Select a Company for Comprehensive Analysis
             </h3>

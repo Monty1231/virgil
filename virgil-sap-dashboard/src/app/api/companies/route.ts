@@ -105,6 +105,52 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate field lengths to prevent database errors
+    const maxLength = 255;
+    const fieldsToCheck = {
+      name: name,
+      industry: industry,
+      company_size: company_size,
+      region: region,
+      current_systems: current_systems || "",
+      budget: budget || "",
+      timeline: timeline || "",
+      priority: priority || "",
+      notes: notes || "",
+    };
+
+    for (const [fieldName, value] of Object.entries(fieldsToCheck)) {
+      if (value && value.length > maxLength) {
+        return NextResponse.json(
+          {
+            error: `${fieldName} is too long (max ${maxLength} characters). Current length: ${value.length}`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Handle website field separately - truncate if too long
+    let truncatedWebsite = website || "";
+    if (truncatedWebsite.length > maxLength) {
+      console.log(
+        `🏢 API: Truncating website from ${truncatedWebsite.length} to ${maxLength} characters`
+      );
+      truncatedWebsite = truncatedWebsite.substring(0, maxLength);
+    }
+
+    // Handle business_challenges field separately - truncate if too long
+    let truncatedBusinessChallenges = business_challenges || "";
+    if (truncatedBusinessChallenges.length > maxLength) {
+      console.log(
+        `🏢 API: Truncating business_challenges from ${truncatedBusinessChallenges.length} to ${maxLength} characters`
+      );
+      truncatedBusinessChallenges = truncatedBusinessChallenges.substring(
+        0,
+        maxLength
+      );
+    }
+
     // Build and run the INSERT query
     const insertQuery = `
       INSERT INTO companies (
@@ -135,8 +181,8 @@ export async function POST(request: Request) {
       industry,
       company_size,
       region,
-      website || "",
-      business_challenges || "",
+      truncatedWebsite,
+      truncatedBusinessChallenges,
       current_systems || "",
       budget || "",
       timeline || "",
@@ -191,10 +237,15 @@ export async function POST(request: Request) {
     try {
       console.log("🏢 API: Starting async RAG processing...");
       // Don't await this - let it run in the background
-      knowledgeBase.initialize()
+      knowledgeBase
+        .initialize()
         .then(() => knowledgeBase.addCompanyToKnowledgeBase(newCompany.id))
         .then((chunksAdded) => {
-          console.log("🏢 API: ✅ Async RAG processing completed - Added", chunksAdded, "chunks to knowledge base");
+          console.log(
+            "🏢 API: ✅ Async RAG processing completed - Added",
+            chunksAdded,
+            "chunks to knowledge base"
+          );
         })
         .catch((ragError) => {
           console.error("🏢 API: ❌ Async RAG processing failed:", ragError);

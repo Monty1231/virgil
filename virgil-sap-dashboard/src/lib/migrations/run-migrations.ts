@@ -1,6 +1,10 @@
 import { readFileSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import sql from "../db";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export async function runMigrations() {
   try {
@@ -22,7 +26,7 @@ export async function runMigrations() {
 }
 
 // Run migrations if this file is executed directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runMigrations()
     .then(() => {
       console.log("Migrations completed");

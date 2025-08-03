@@ -43,6 +43,8 @@ import {
   Paperclip,
   Download,
   Trash2,
+  Headphones,
+  Play,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -131,6 +133,7 @@ const fileTypes = [
   },
   { value: "financial", label: "Financial Information", icon: DollarSign },
   { value: "presentation", label: "Company Presentation", icon: ImageIcon },
+  { value: "audio", label: "Audio Recordings", icon: Headphones },
   { value: "other", label: "Other", icon: Paperclip },
 ];
 
@@ -1204,7 +1207,11 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                             <Input
                               type="file"
                               multiple
-                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
+                              accept={
+                                fileType.value === "audio"
+                                  ? ".mp3,.wav,.ogg,.webm,.m4a,.aac,.flac"
+                                  : ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
+                              }
                               onChange={(e) =>
                                 handleFileUpload(e, fileType.value)
                               }
@@ -1238,6 +1245,8 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                                     <Loader2 className="h-4 w-4 text-blue-500 flex-shrink-0 animate-spin" />
                                   ) : file.status === "error" ? (
                                     <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                  ) : file.type.startsWith("audio/") ? (
+                                    <Headphones className="h-4 w-4 text-gray-500 flex-shrink-0" />
                                   ) : (
                                     <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
                                   )}
@@ -1268,17 +1277,34 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                                 </div>
                                 <div className="flex items-center gap-1">
                                   {file.url && file.status === "success" && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        window.open(file.url, "_blank")
-                                      }
-                                      title="Download file"
-                                    >
-                                      <Download className="h-3 w-3" />
-                                    </Button>
+                                    <>
+                                      {file.type.startsWith("audio/") ? (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const audio = new Audio(file.url);
+                                            audio.play();
+                                          }}
+                                          title="Play audio"
+                                        >
+                                          <Play className="h-3 w-3" />
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            window.open(file.url, "_blank")
+                                          }
+                                          title="Download file"
+                                        >
+                                          <Download className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </>
                                   )}
                                   <Button
                                     type="button"
