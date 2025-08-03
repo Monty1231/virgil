@@ -1,338 +1,203 @@
-"use client"
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { PlusCircle, FileText, DollarSign, TrendingUp, Users, Target, Building2, Calendar } from "lucide-react"
-import Link from "next/link"
-import { useDeals } from "@/hooks/use-deals"
-import { useState, useEffect } from "react"
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
 
-interface Company {
-  id: number
-  name: string
-  industry: string
-  company_size: string
-  region: string
-  created_at: string
-}
-
-const getStageColor = (stage: string) => {
-  switch (stage) {
-    case "Discovery":
-      return "bg-primary/10 text-primary border-primary/20"
-    case "Proposal":
-      return "bg-secondary text-secondary-foreground border-secondary/20"
-    case "Demo":
-      return "bg-accent text-accent-foreground border-accent/20"
-    case "Negotiation":
-      return "bg-muted text-muted-foreground border-muted/20"
-    case "Closed-Won":
-      return "bg-green-100 text-green-800 border-green-200"
-    default:
-      return "bg-muted text-muted-foreground border-muted/20"
-  }
-}
-
-export default function Dashboard() {
-  const { deals, loading: dealsLoading } = useDeals()
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [companiesLoading, setCompaniesLoading] = useState(true)
-
-  // Fetch companies
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const response = await fetch("/api/companies")
-        if (response.ok) {
-          const data = await response.json()
-          setCompanies(Array.isArray(data) ? data : [])
-        }
-      } catch (error) {
-        console.error("Failed to fetch companies:", error)
-        setCompanies([])
-      } finally {
-        setCompaniesLoading(false)
-      }
-    }
-
-    fetchCompanies()
-  }, [])
-
-  // Calculate real metrics from deals data
-  const calculateMetrics = () => {
-    if (!deals || deals.length === 0) {
-      return {
-        totalPipelineValue: 0,
-        activeDeals: 0,
-        closedWonCount: 0,
-        closedWonValue: 0,
-        winRate: 0,
-      }
-    }
-
-    const totalPipelineValue = deals
-      .filter((deal) => deal.stage !== "Closed-Won")
-      .reduce((sum, deal) => {
-        const value = Number(deal.deal_value) || 0
-        return sum + value
-      }, 0)
-
-    const activeDeals = deals.filter((deal) => deal.stage !== "Closed-Won").length
-
-    const closedWonDeals = deals.filter((deal) => deal.stage === "Closed-Won")
-    const closedWonCount = closedWonDeals.length
-    const closedWonValue = closedWonDeals.reduce((sum, deal) => {
-      const value = Number(deal.deal_value) || 0
-      return sum + value
-    }, 0)
-
-    // Calculate win rate (closed won vs total deals that have been through the pipeline)
-    const totalProcessedDeals = deals.length
-    const winRate = totalProcessedDeals > 0 ? Math.round((closedWonCount / totalProcessedDeals) * 100) : 0
-
-    return {
-      totalPipelineValue,
-      activeDeals,
-      closedWonCount,
-      closedWonValue,
-      winRate,
-    }
+  // If user is authenticated, redirect to dashboard
+  if (session?.user?.isActive) {
+    redirect("/pipeline");
   }
 
-  const metrics = calculateMetrics()
-
-  // Get recent active deals for display
-  const recentActiveDeals = deals
-    .filter((deal) => deal.stage !== "Closed-Won")
-    .sort((a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime())
-    .slice(0, 4)
-
-  // Format currency with proper null checking
-  const formatCurrency = (amount: number | string | null | undefined) => {
-    const numAmount = Number(amount) || 0
-
-    if (numAmount >= 1000000) {
-      return `$${(numAmount / 1000000).toFixed(1)}M`
-    } else if (numAmount >= 1000) {
-      return `$${(numAmount / 1000).toFixed(0)}K`
-    } else {
-      return `$${numAmount.toLocaleString()}`
-    }
-  }
-
-  // Format date for last activity
-  const formatLastActivity = (dateString: string) => {
-    if (!dateString) return "No activity"
-
-    try {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffTime = Math.abs(now.getTime() - date.getTime())
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-      if (diffDays === 1) return "1 day ago"
-      if (diffDays < 7) return `${diffDays} days ago`
-      if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`
-      return `${Math.ceil(diffDays / 30)} months ago`
-    } catch (error) {
-      return "Invalid date"
-    }
-  }
-
-  if (dealsLoading || companiesLoading) {
+  // If user is authenticated but not active, show pending message
+  if (session?.user && !session.user.isActive) {
     return (
-      <div className="flex-1 space-y-6 p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger />
-            <div>
-              <h1 className="text-heading text-foreground">Dashboard</h1>
-              <p className="text-caption text-muted-foreground">Loading your sales data...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto p-8">
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Access Request Submitted
+              </h1>
+              <p className="text-gray-600">
+                Thank you for your interest in Virgil.io! Your access request
+                has been submitted and is currently under review.
+              </p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                You will receive an email notification once your access has been
+                approved.
+              </p>
+            </div>
+            <div className="text-sm text-gray-500">
+              <p>Signed in as: {session.user.email}</p>
             </div>
           </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-muted rounded w-1/2"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
-    )
+    );
   }
 
+  // Landing page for unauthenticated users
   return (
-    <div className="flex-1 space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-heading text-foreground">Dashboard</h1>
-            <p className="text-caption text-muted-foreground">Welcome back! Here's your sales overview.</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <img src="/Virgil_blue.svg" alt="Virgil" className="h-8 w-auto" />
+              <span className="ml-3 text-xl font-semibold text-gray-900">
+                Virgil
+              </span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/auth/signin"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Key Metrics */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pipeline Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatCurrency(metrics.totalPipelineValue)}</div>
-            <p className="text-xs text-muted-foreground">Active opportunities</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Deals</CardTitle>
-            <Target className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{metrics.activeDeals}</div>
-            <p className="text-xs text-muted-foreground">In pipeline</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Closed Won</CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{metrics.closedWonCount}</div>
-            <p className="text-xs text-green-600">{formatCurrency(metrics.closedWonValue)} total value</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Win Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{metrics.winRate}%</div>
-            <p className="text-xs text-muted-foreground">Overall conversion</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-foreground">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <Button asChild className="bg-primary hover:bg-primary/90">
-              <Link href="/new-account">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add New Account
+      {/* Hero Section */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center">
+          <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+            <span className="block">Transform Your</span>
+            <span className="block text-blue-600">Sales Process</span>
+          </h1>
+          <p className="mt-3 max-w-md mx-auto text-base text-gray-500 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
+            Streamline your sales pipeline with AI-powered insights, automated
+            deal tracking, and intelligent recommendations.
+          </p>
+          <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
+            <div className="rounded-md shadow">
+              <Link
+                href="/auth/signin"
+                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10 transition-colors"
+              >
+                Get Started
               </Link>
-            </Button>
-            <Button asChild variant="outline" className="border-border bg-transparent hover:bg-accent">
-              <Link href="/decks">
-                <FileText className="mr-2 h-4 w-4" />
-                Generate Deck
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="border-border bg-transparent hover:bg-accent">
-              <Link href="/commissions">
-                <DollarSign className="mr-2 h-4 w-4" />
-                Submit Commission
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Active Opportunities */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-foreground">Active Opportunities</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentActiveDeals.length === 0 ? (
-            <div className="text-center py-8">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-4">No active deals yet</p>
-              <Button asChild>
-                <Link href="/pipeline">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Your First Deal
-                </Link>
-              </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {recentActiveDeals.map((deal) => (
-                <div
-                  key={deal.id}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent transition-colors"
+          </div>
+        </div>
+
+        {/* Features Section */}
+        <div className="mt-24">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Feature 1 */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                <svg
+                  className="w-6 h-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <div className="flex items-center gap-4">
-                    <Building2 className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <h3 className="font-medium text-foreground">{deal.deal_name || "Unnamed Deal"}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {deal.company_name || "Unknown Company"} • AE: {deal.ae_name || "Unassigned"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge className={getStageColor(deal.stage)}>{deal.stage}</Badge>
-                    <div className="text-right">
-                      <p className="font-medium text-foreground">{formatCurrency(deal.deal_value)}</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {formatLastActivity(deal.last_activity)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                AI-Powered Analytics
+              </h3>
+              <p className="text-gray-600">
+                Get intelligent insights into your sales pipeline with advanced
+                analytics and predictive modeling.
+              </p>
             </div>
-          )}
-          <div className="mt-4">
-            <Button asChild variant="outline" className="w-full bg-transparent hover:bg-accent">
-              <Link href="/pipeline">View Full Pipeline</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Companies Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-foreground">Companies in Database</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-bold text-foreground">{companies.length}</div>
-            <Building2 className="h-8 w-8 text-muted-foreground" />
+            {/* Feature 2 */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Deal Tracking
+              </h3>
+              <p className="text-gray-600">
+                Track your deals from initial contact to close with
+                comprehensive deal management tools.
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+                <svg
+                  className="w-6 h-6 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Team Collaboration
+              </h3>
+              <p className="text-gray-600">
+                Work together seamlessly with your sales team using shared
+                pipelines and real-time updates.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">Total companies in your database ready for analysis</p>
-          <div className="flex gap-2">
-            <Button asChild size="sm">
-              <Link href="/new-account">Add Company</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/analyzer">Run Analysis</Link>
-            </Button>
+        </div>
+
+        {/* CTA Section */}
+        <div className="mt-24 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Ready to Get Started?
+          </h2>
+          <p className="text-lg text-gray-600 mb-8">
+            Join thousands of sales professionals who trust Virgil to power
+            their success.
+          </p>
+          <Link
+            href="/auth/signin"
+            className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10 transition-colors"
+          >
+            Sign In Now
+          </Link>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-24">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="text-gray-500">© 2024 Virgil. All rights reserved.</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </footer>
     </div>
-  )
+  );
 }

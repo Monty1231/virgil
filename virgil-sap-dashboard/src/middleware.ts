@@ -6,21 +6,27 @@ export default withAuth(
     const token = req.nextauth.token;
     const isAuth = !!token;
     const isAuthPage = req.nextUrl.pathname.startsWith("/auth");
+    const isRootPage = req.nextUrl.pathname === "/";
     const isActive = token?.isActive;
 
-    // If user is not authenticated and trying to access protected route
-    if (!isAuth && !isAuthPage) {
+    // If user is not authenticated and trying to access protected route (not root or auth)
+    if (!isAuth && !isAuthPage && !isRootPage) {
       return NextResponse.redirect(new URL("/auth/signin", req.url));
     }
 
     // If user is authenticated but not active and trying to access protected route
-    if (isAuth && !isActive && !isAuthPage) {
+    if (isAuth && !isActive && !isAuthPage && !isRootPage) {
       return NextResponse.redirect(new URL("/auth/signin", req.url));
     }
 
     // If user is authenticated and active but trying to access auth pages
     if (isAuth && isActive && isAuthPage) {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/pipeline", req.url));
+    }
+
+    // If user is authenticated and active and trying to access root page, redirect to dashboard
+    if (isAuth && isActive && isRootPage) {
+      return NextResponse.redirect(new URL("/pipeline", req.url));
     }
 
     return NextResponse.next();
@@ -28,8 +34,8 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Allow access to auth pages without requiring authentication
-        if (req.nextUrl.pathname.startsWith("/auth")) {
+        // Allow access to auth pages and root page without requiring authentication
+        if (req.nextUrl.pathname.startsWith("/auth") || req.nextUrl.pathname === "/") {
           return true;
         }
         // For all other pages, require authentication
