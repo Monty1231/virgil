@@ -1,12 +1,22 @@
 import sql from "@/lib/db";
 import { NextResponse } from "next/server";
 import { knowledgeBase } from "@/lib/knowledge-base";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     console.log("Fetching deals from database...");
 
-    const deals = await sql.query(`
+    const deals = await sql.query(
+      `
       SELECT 
         d.id,
         d.deal_name,
@@ -20,8 +30,11 @@ export async function GET() {
       FROM deals d
       LEFT JOIN companies c ON d.company_id = c.id
       LEFT JOIN users u ON d.ae_assigned = u.id
+      WHERE d.ae_assigned = $1
       ORDER BY d.last_activity DESC
-    `);
+    `,
+      [session.user.id]
+    );
 
     console.log("Database query result:", deals);
     console.log("Number of deals found:", deals.rows.length);
@@ -61,6 +74,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       company_name,
@@ -82,19 +102,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Look up company ID by name
+    // Look up company ID by name (only companies created by current user)
     let company_id;
     if (company_name) {
       const companyResult = await sql.query(
-        "SELECT id FROM companies WHERE name = $1",
-        [company_name]
+        "SELECT id FROM companies WHERE name = $1 AND created_by = $2",
+        [company_name, session.user.id]
       );
 
       if (companyResult.rows.length === 0) {
         // Create the company if it doesn't exist
         const newCompanyResult = await sql.query(
-          "INSERT INTO companies (name, industry, company_size, region) VALUES ($1, $2, $3, $4) RETURNING id",
-          [company_name, "Unknown", "Unknown", "Unknown"]
+          "INSERT INTO companies (name, industry, company_size, region, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+          [company_name, "Unknown", "Unknown", "Unknown", session.user.id]
         );
         company_id = newCompanyResult.rows[0].id;
         console.log("Created new company with ID:", company_id);
@@ -104,21 +124,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Look up user ID by name
-    let ae_assigned = 1; // Default to user ID 1 if no AE specified
-    if (ae_name) {
-      const userResult = await sql.query(
-        "SELECT id FROM users WHERE name = $1",
-        [ae_name]
-      );
-
-      if (userResult.rows.length > 0) {
-        ae_assigned = userResult.rows[0].id;
-        console.log("Found AE with ID:", ae_assigned);
-      } else {
-        console.log("AE not found, using default ID:", ae_assigned);
-      }
-    }
+    // Use current user as the AE assigned
+    const ae_assigned = session.user.id;
 
     const result = await sql.query(
       `

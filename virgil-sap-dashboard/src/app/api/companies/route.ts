@@ -1,12 +1,29 @@
 import sql from "@/lib/db";
 import { NextResponse } from "next/server";
 import { knowledgeBase } from "@/lib/knowledge-base";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("🏢 API: Session data:", {
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name,
+      isActive: session.user.isActive,
+      isAdmin: session.user.isAdmin,
+    });
+
     console.log("🏢 API: Fetching companies from database...");
 
-    // Build and run the SELECT query
+    // Build and run the SELECT query with user filter
     const selectQuery = `
       SELECT 
         id,
@@ -26,9 +43,10 @@ export async function GET() {
         tags,
         created_at
       FROM companies
+      WHERE created_by = $1
       ORDER BY name ASC
     `;
-    const { rows: companies } = await sql.query(selectQuery);
+    const { rows: companies } = await sql.query(selectQuery, [session.user.id]);
 
     console.log("🏢 API: Raw database result:", companies);
     console.log(
@@ -68,6 +86,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       name,
@@ -191,7 +216,7 @@ export async function POST(request: Request) {
       secondary_contact ? JSON.stringify(secondary_contact) : null,
       notes || "",
       tags ? JSON.stringify(tags) : null,
-      1, // created_by
+      session.user.id, // created_by - links the company to the current user
     ];
     const { rows: insertResult } = await sql.query(insertQuery, insertValues);
     const newCompany = insertResult[0];
