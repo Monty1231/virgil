@@ -7,12 +7,14 @@ interface AnimatedButtonProps {
   href: string;
   children: React.ReactNode;
   className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export const AnimatedButton = ({
   href,
   children,
   className = "",
+  onClick,
 }: AnimatedButtonProps) => {
   return (
     <motion.div
@@ -32,7 +34,11 @@ export const AnimatedButton = ({
         ease: "easeInOut",
       }}
     >
-      <Link href={href} className="block w-full h-full">
+      <Link
+        href={href}
+        className="flex items-center justify-center w-full h-full"
+        onClick={onClick}
+      >
         {children}
       </Link>
     </motion.div>

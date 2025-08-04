@@ -86,7 +86,7 @@ export default async function HomePage() {
           <div className="mt-8 max-w-md mx-auto sm:flex sm:justify-center md:mt-12">
             <AnimatedButton
               href="/auth/signin"
-              className="w-full flex items-center justify-center px-8 py-4 border border-transparent text-lg font-semibold rounded-lg text-white bg-blue-500 hover:bg-blue-600 md:py-5 md:text-xl md:px-12 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="w-full flex items-center justify-center px-8 py-4 border border-transparent text-lg font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 md:py-5 md:text-xl md:px-12 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               <span>Get Started</span>
             </AnimatedButton>
@@ -211,8 +211,8 @@ export default async function HomePage() {
                   Add Your Data
                 </h3>
                 <p className="text-gray-600">
-                  Create custom company profiles for companies 
-                  you are prospecting.
+                  Create custom company profiles for companies you are
+                  prospecting.
                 </p>
               </div>
             </FloatingCard>
@@ -320,7 +320,7 @@ export default async function HomePage() {
                 </ul>
                 <AnimatedButton
                   href="/auth/signin"
-                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-all duration-200"
+                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Get Started</span>
                 </AnimatedButton>
@@ -404,7 +404,7 @@ export default async function HomePage() {
                 </ul>
                 <AnimatedButton
                   href="/auth/signin"
-                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-all duration-200"
+                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Get Started</span>
                 </AnimatedButton>
@@ -483,7 +483,7 @@ export default async function HomePage() {
                 </ul>
                 <AnimatedButton
                   href="/auth/signin"
-                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-all duration-200"
+                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Get Started</span>
                 </AnimatedButton>
@@ -562,7 +562,7 @@ export default async function HomePage() {
                 </ul>
                 <AnimatedButton
                   href="/auth/signin"
-                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-all duration-200"
+                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Contact Sales</span>
                 </AnimatedButton>
@@ -651,7 +651,7 @@ export default async function HomePage() {
         </div>
 
         {/* CTA Section */}
-        <div className="mt-32 text-center bg-gradient-to-r from-navy-50 to-blue-50 rounded-2xl py-16 px-8">
+        <div className="mt-32 text-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl py-16 px-8">
           <StaggeredText
             text="Ready to Transform Your Sales Process?"
             className="text-3xl font-bold text-gray-900 mb-6 sm:text-4xl"
@@ -663,7 +663,7 @@ export default async function HomePage() {
           />
           <AnimatedButton
             href="/auth/signin"
-            className="inline-flex items-center px-10 py-4 border border-transparent text-lg font-semibold rounded-lg text-white bg-blue-500 hover:bg-blue-600 md:py-5 md:text-xl md:px-12 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="inline-flex items-center px-10 py-4 border border-transparent text-lg font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 md:py-5 md:text-xl md:px-12 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             <span>Sign In Now</span>
           </AnimatedButton>
