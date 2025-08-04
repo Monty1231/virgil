@@ -58,7 +58,7 @@ export default function SignIn() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-600 text-center">
-              Thank you for your interest in Virgil.io! Your access request has been submitted and is currently under review.
+              Thank you for your interest in Virgil AI! Your access request has been submitted and is currently under review.
             </p>
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -82,7 +82,7 @@ export default function SignIn() {
           <div className="mx-auto mb-4">
             <img src="/Virgil_blue.svg" alt="Virgil" className="h-12" />
           </div>
-          <CardTitle className="text-2xl">Welcome to Virgil.io</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Virgil AI</CardTitle>
           <p className="text-gray-600 mt-2">
             AI-Powered SAP Sales Assistant
           </p>

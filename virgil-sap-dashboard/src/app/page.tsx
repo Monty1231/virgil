@@ -8,7 +8,7 @@ export default async function HomePage() {
 
   // If user is authenticated, redirect to dashboard
   if (session?.user?.isActive) {
-    redirect("/pipeline");
+    redirect("/dashboard");
   }
 
   // If user is authenticated but not active, show pending message
@@ -45,23 +45,18 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <img src="/Virgil_blue.svg" alt="Virgil" className="h-8 w-auto" />
-              <span className="ml-3 text-xl font-semibold text-gray-900">
-                Virgil
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/auth/signin"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              >
-                Sign In
-              </Link>
-            </div>
+      <header className="bg-white shadow-md border-b border-gray-100">
+        <div className="flex justify-between items-center py-8 px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center">
+            <img src="/darkLogo.png" alt="Virgil" className="h-12 w-auto" />
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/auth/signin"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              Sign In
+            </Link>
           </div>
         </div>
       </header>
@@ -194,6 +189,12 @@ export default async function HomePage() {
       <footer className="bg-white border-t border-gray-200 mt-24">
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <div className="text-center">
+            <div className="mb-4">
+              <h3 className="text-2xl font-bold text-gray-900">Virgil</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                AI-Powered Sales Intelligence
+              </p>
+            </div>
             <p className="text-gray-500">© 2024 Virgil. All rights reserved.</p>
           </div>
         </div>

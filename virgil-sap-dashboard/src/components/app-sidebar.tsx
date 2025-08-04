@@ -32,7 +32,7 @@ import {
 const menuItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: BarChart3,
   },
   {
@@ -51,7 +51,7 @@ const menuItems = [
     icon: FileText,
   },
   {
-    title: "Pipeline Tracker",
+    title: "Pipeline",
     url: "/pipeline",
     icon: Kanban,
   },
@@ -81,22 +81,22 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar-background flex flex-col">
-      <SidebarHeader className="border-b border-sidebar-border p-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0">
+      <SidebarHeader className="border-b border-sidebar-border pl-0 pr-0 py-0">
+        <div className="flex items-center justify-start gap-0">
+          <div className="flex-shrink-0 -ml-4">
             <Image
               src="/Virgil_blue.svg"
-              alt="My Logo"
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full object-cover"
+              alt="Virgil Logo"
+              width={120}
+              height={120}
+              className="h-48 w-auto object-contain"
             />
           </div>
-          <div>
-            <h1 className="text-subheading font-semibold text-sidebar-foreground">
+          <div className="flex-shrink-0 min-w-0 flex-1 -ml-12">
+            <h1 className="text-sm font-semibold text-sidebar-foreground truncate">
               Virgil AI
             </h1>
-            <p className="text-caption text-sidebar-muted-foreground">
+            <p className="text-xs text-sidebar-muted-foreground truncate">
               SAP Sales Assistant
             </p>
           </div>
@@ -114,7 +114,11 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.url}
+                    isActive={
+                      pathname === item.url ||
+                      (item.url !== "/pipeline" &&
+                        pathname.startsWith(item.url))
+                    }
                     className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
                   >
                     <Link href={item.url}>
@@ -140,7 +144,9 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      isActive={pathname === item.url}
+                      isActive={
+                        pathname === item.url || pathname.startsWith(item.url)
+                      }
                       className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
                     >
                       <Link href={item.url}>
