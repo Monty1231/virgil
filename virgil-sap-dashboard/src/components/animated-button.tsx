@@ -1,0 +1,40 @@
+"use client";
+
+import { motion } from "framer-motion";
+import Link from "next/link";
+
+interface AnimatedButtonProps {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const AnimatedButton = ({
+  href,
+  children,
+  className = "",
+}: AnimatedButtonProps) => {
+  return (
+    <motion.div
+      className={className}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      animate={{
+        boxShadow: [
+          "0 0 0 rgba(59, 130, 246, 0)",
+          "0 0 8px rgba(59, 130, 246, 0.4)",
+          "0 0 0 rgba(59, 130, 246, 0)",
+        ],
+      }}
+      transition={{
+        duration: 1.5,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+    >
+      <Link href={href} className="block w-full h-full">
+        {children}
+      </Link>
+    </motion.div>
+  );
+};
