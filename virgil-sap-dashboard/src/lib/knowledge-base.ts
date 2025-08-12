@@ -195,6 +195,19 @@ export class KnowledgeBase {
     );
   }
 
+  private inferCategoryFromName(productName: string): string {
+    const name = productName.toLowerCase();
+    if (name.includes("s/4hana")) return "ERP";
+    if (name.includes("ariba")) return "Procurement";
+    if (name.includes("concur")) return "Expense Management";
+    if (name.includes("fieldglass")) return "Workforce";
+    if (name.includes("analytics") || name.includes("sac")) return "Analytics";
+    if (name.includes("customer") || name.includes("cx")) return "CRM";
+    if (name.includes("commerce")) return "E-commerce";
+    if (name.includes("hr") || name.includes("successfactors")) return "HR";
+    return "ERP";
+  }
+
   private generateBenefits(category: string, productName: string): string[] {
     const benefits: Record<string, string[]> = {
       ERP: [

@@ -4,7 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { PlusCircle, FileText, DollarSign, TrendingUp, Users, Target, Building2, Calendar } from "lucide-react";
+import {
+  PlusCircle,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  Users,
+  Target,
+  Building2,
+  Calendar,
+} from "lucide-react";
 import Link from "next/link";
 import { useDeals } from "@/hooks/use-deals";
 import { useState, useEffect } from "react";
@@ -75,22 +84,29 @@ export default function Dashboard() {
     const totalPipelineValue = deals
       .filter((deal) => deal.stage !== "Closed-Won")
       .reduce((sum, deal) => {
-        const value = Number(deal.deal_value) || 0;
+        const value =
+          Number((deal as any).deal_value ?? (deal as any).value) || 0;
         return sum + value;
       }, 0);
 
-    const activeDeals = deals.filter((deal) => deal.stage !== "Closed-Won").length;
+    const activeDeals = deals.filter(
+      (deal) => deal.stage !== "Closed-Won"
+    ).length;
 
     const closedWonDeals = deals.filter((deal) => deal.stage === "Closed-Won");
     const closedWonCount = closedWonDeals.length;
     const closedWonValue = closedWonDeals.reduce((sum, deal) => {
-      const value = Number(deal.deal_value) || 0;
+      const value =
+        Number((deal as any).deal_value ?? (deal as any).value) || 0;
       return sum + value;
     }, 0);
 
     // Calculate win rate (closed won vs total deals that have been through the pipeline)
     const totalProcessedDeals = deals.length;
-    const winRate = totalProcessedDeals > 0 ? Math.round((closedWonCount / totalProcessedDeals) * 100) : 0;
+    const winRate =
+      totalProcessedDeals > 0
+        ? Math.round((closedWonCount / totalProcessedDeals) * 100)
+        : 0;
 
     return {
       totalPipelineValue,
@@ -106,7 +122,11 @@ export default function Dashboard() {
   // Get recent active deals for display
   const recentActiveDeals = deals
     .filter((deal) => deal.stage !== "Closed-Won")
-    .sort((a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.last_activity).getTime() -
+        new Date(a.last_activity).getTime()
+    )
     .slice(0, 4);
 
   // Format currency with proper null checking
@@ -149,7 +169,9 @@ export default function Dashboard() {
             <SidebarTrigger />
             <div>
               <h1 className="text-heading text-foreground">Dashboard</h1>
-              <p className="text-caption text-muted-foreground">Loading your sales data...</p>
+              <p className="text-caption text-muted-foreground">
+                Loading your sales data...
+              </p>
             </div>
           </div>
         </div>
@@ -176,7 +198,9 @@ export default function Dashboard() {
           <SidebarTrigger />
           <div>
             <h1 className="text-heading text-foreground">Dashboard</h1>
-            <p className="text-caption text-muted-foreground">Welcome back! Here's your sales overview.</p>
+            <p className="text-caption text-muted-foreground">
+              Welcome back! Here's your sales overview.
+            </p>
           </div>
         </div>
       </div>
@@ -185,44 +209,64 @@ export default function Dashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pipeline Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Pipeline Value
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatCurrency(metrics.totalPipelineValue)}</div>
-            <p className="text-xs text-muted-foreground">Active opportunities</p>
+            <div className="text-2xl font-bold text-foreground">
+              {formatCurrency(metrics.totalPipelineValue)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Active opportunities
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Deals</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Active Deals
+            </CardTitle>
             <Target className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{metrics.activeDeals}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {metrics.activeDeals}
+            </div>
             <p className="text-xs text-muted-foreground">In pipeline</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Closed Won</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Closed Won
+            </CardTitle>
             <Users className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{metrics.closedWonCount}</div>
-            <p className="text-xs text-green-600">{formatCurrency(metrics.closedWonValue)} total value</p>
+            <div className="text-2xl font-bold text-foreground">
+              {metrics.closedWonCount}
+            </div>
+            <p className="text-xs text-green-600">
+              {formatCurrency(metrics.closedWonValue)} total value
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Win Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Win Rate
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{metrics.winRate}%</div>
+            <div className="text-2xl font-bold text-foreground">
+              {metrics.winRate}%
+            </div>
             <p className="text-xs text-muted-foreground">Overall conversion</p>
           </CardContent>
         </Card>
@@ -241,13 +285,21 @@ export default function Dashboard() {
                 Add New Account
               </Link>
             </Button>
-            <Button asChild variant="outline" className="border-border bg-transparent hover:bg-accent">
+            <Button
+              asChild
+              variant="outline"
+              className="border-border bg-transparent hover:bg-accent"
+            >
               <Link href="/decks">
                 <FileText className="mr-2 h-4 w-4" />
                 Generate Deck
               </Link>
             </Button>
-            <Button asChild variant="outline" className="border-border bg-transparent hover:bg-accent">
+            <Button
+              asChild
+              variant="outline"
+              className="border-border bg-transparent hover:bg-accent"
+            >
               <Link href="/commissions">
                 <DollarSign className="mr-2 h-4 w-4" />
                 Submit Commission
@@ -260,7 +312,9 @@ export default function Dashboard() {
       {/* Active Opportunities */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-foreground">Active Opportunities</CardTitle>
+          <CardTitle className="text-foreground">
+            Active Opportunities
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {recentActiveDeals.length === 0 ? (
@@ -284,16 +338,23 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4">
                     <Building2 className="h-8 w-8 text-muted-foreground" />
                     <div>
-                      <h3 className="font-medium text-foreground">{deal.deal_name || "Unnamed Deal"}</h3>
+                      <h3 className="font-medium text-foreground">
+                        {deal.deal_name || "Unnamed Deal"}
+                      </h3>
                       <p className="text-sm text-muted-foreground">
-                        {deal.company_name || "Unknown Company"} • AE: {deal.ae_name || "Unassigned"}
+                        {deal.company_name || "Unknown Company"} • AE:{" "}
+                        {deal.ae_name || "Unassigned"}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <Badge className={getStageColor(deal.stage)}>{deal.stage}</Badge>
+                    <Badge className={getStageColor(deal.stage)}>
+                      {deal.stage}
+                    </Badge>
                     <div className="text-right">
-                      <p className="font-medium text-foreground">{formatCurrency(deal.deal_value)}</p>
+                      <p className="font-medium text-foreground">
+                        {formatCurrency(deal.deal_value)}
+                      </p>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {formatLastActivity(deal.last_activity)}
@@ -305,7 +366,11 @@ export default function Dashboard() {
             </div>
           )}
           <div className="mt-4">
-            <Button asChild variant="outline" className="w-full bg-transparent hover:bg-accent">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full bg-transparent hover:bg-accent"
+            >
               <Link href="/pipeline">View Full Pipeline</Link>
             </Button>
           </div>
@@ -315,14 +380,20 @@ export default function Dashboard() {
       {/* Companies Overview */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-foreground">Companies in Database</CardTitle>
+          <CardTitle className="text-foreground">
+            Companies in Database
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-bold text-foreground">{companies.length}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {companies.length}
+            </div>
             <Building2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="text-sm text-muted-foreground mb-4">Total companies in your database ready for analysis</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Total companies in your database ready for analysis
+          </p>
           <div className="flex gap-2">
             <Button asChild size="sm">
               <Link href="/new-account">Add Company</Link>
@@ -335,4 +406,4 @@ export default function Dashboard() {
       </Card>
     </div>
   );
-} 
+}

@@ -323,10 +323,69 @@ export class RAGService {
           JSON.stringify(finalSolutions, null, 2)
         );
 
+        const companyIndustry = ragContext.company.industry;
+        const companyBudgetStr = ragContext.company.budget || "";
+        const relevantProducts = ragContext.relevantProducts || [];
+
+        const findVectorScoreForModule = (
+          moduleName: string
+        ): number | undefined => {
+          const normalize = (s: string) =>
+            s.toLowerCase().replace(/\s+/g, " ").trim();
+          const target = normalize(moduleName).replace(/\s*\(.*?\)\s*$/, "");
+          let best: number | undefined = undefined;
+          for (const p of relevantProducts) {
+            const pname = normalize(
+              String(p.metadata?.product_name || "")
+            ).replace(/\s*\(.*?\)\s*$/, "");
+            if (
+              pname === target ||
+              pname.includes(target) ||
+              target.includes(pname)
+            ) {
+              best = Math.max(best ?? 0, Number(p.score) || 0);
+            }
+          }
+          return best;
+        };
+
+        const computeFitScore = (solution: any): number => {
+          const vectorScore = findVectorScoreForModule(
+            solution.module || solution.product_name || ""
+          );
+          let base =
+            typeof vectorScore === "number"
+              ? Number((Math.max(0, Math.min(1, vectorScore)) * 100).toFixed(2))
+              : NaN;
+
+          if (Number.isNaN(base)) {
+            // Fallbacks: model-provided fitScore or textual fit
+            const raw = solution.fitScore ?? solution.fit_score ?? null;
+            if (typeof raw === "number" && Number.isFinite(raw)) {
+              base = Number(raw.toFixed(2));
+            } else {
+              const fitStr = String(solution.fit || "").toLowerCase();
+              if (fitStr.includes("high")) base = 85;
+              else if (fitStr.includes("medium")) base = 65;
+              else if (fitStr.includes("low")) base = 40;
+              else base = 60;
+            }
+          }
+          const clamped = Math.max(0, Math.min(100, base));
+          return Number(clamped.toFixed(2));
+        };
+
         // Ensure each solution has the required fields
-        return finalSolutions.map((solution: any) => ({
+        const mapped = finalSolutions.map((solution: any) => ({
           module: solution.module || solution.product_name || "SAP Module",
           fit: solution.fit || "Medium",
+          fitScore: computeFitScore(solution),
+          retrievalScore: (() => {
+            const v = findVectorScoreForModule(
+              solution.module || solution.product_name || ""
+            );
+            return typeof v === "number" ? Math.round(v * 100) : undefined;
+          })(),
           fitJustification: solution.fitJustification || "",
           priority: solution.priority || 1,
           estimatedROI: solution.estimatedROI || 25,
@@ -361,7 +420,6 @@ export class RAGService {
             // Post-process the context to ensure proper formatting
             const formatContext = (text: string) => {
               if (!text) return "";
-
               // Ensure proper section breaks
               let formatted = text
                 .replace(/(EXECUTIVE SUMMARY:)/g, "\n\n$1")
@@ -371,7 +429,7 @@ export class RAGService {
                 .replace(/(IMPLEMENTATION STRATEGY:)/g, "\n\n$1")
                 .replace(/(COMPETITIVE ADVANTAGES:)/g, "\n\n$1")
                 .replace(/(CONCLUSION:)/g, "\n\n$1")
-                .replace(/^\n+/, "") // Remove leading newlines
+                .replace(/^\n+/, "")
                 .trim();
 
               // If no sections found, add basic structure
@@ -409,6 +467,15 @@ export class RAGService {
           analysisContext: solution.analysisContext || solution.context || "",
           context: solution.context || "",
         }));
+
+        // Sort by fitScore descending and reassign priority 1..n
+        mapped.sort(
+          (a, b) => (b.fitScore ?? -Infinity) - (a.fitScore ?? -Infinity)
+        );
+        mapped.forEach((m, idx) => {
+          m.priority = idx + 1;
+        });
+        return mapped;
       })(),
       businessChallenges: (() => {
         // Ensure businessChallenges are always strings
@@ -431,14 +498,75 @@ export class RAGService {
           }
         });
       })(),
-      fitScore: this.calculateFitScore(
-        ragContext.company,
-        ragContext.relevantProducts.length
-      ),
+      fitScore: (() => {
+        // Average of recommended module fitScores derived from vector similarity
+        const normalize = (s: string) =>
+          s.toLowerCase().replace(/\s+/g, " ").trim();
+        const findVec = (name: string): number | undefined => {
+          const target = normalize(name).replace(/\s*\(.*?\)\s*$/, "");
+          let best: number | undefined = undefined;
+          for (const p of ragContext.relevantProducts || []) {
+            const pname = normalize(
+              String(p.metadata?.product_name || "")
+            ).replace(/\s*\(.*?\)\s*$/, "");
+            if (
+              pname === target ||
+              pname.includes(target) ||
+              target.includes(pname)
+            ) {
+              best = Math.max(best ?? 0, Number(p.score) || 0);
+            }
+          }
+          return best;
+        };
+        const mods = (generatedSolutions || []).slice(0, 3);
+        const scores = mods
+          .map((m: any) => findVec(m.module || m.product_name || ""))
+          .filter((v): v is number => typeof v === "number")
+          .map((v) => Number((Math.max(0, Math.min(1, v)) * 100).toFixed(2)));
+        if (scores.length === 0) return 0;
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        return Number(Math.max(0, Math.min(100, avg)).toFixed(2));
+      })(),
       overallFit: (() => {
-        const score = this.calculateFitScore(
-          ragContext.company,
-          ragContext.relevantProducts.length
+        const score = Number(
+          (
+            (generatedSolutions || [])
+              .slice(0, 3)
+              .map((m: any) => {
+                const normalize = (s: string) =>
+                  s.toLowerCase().replace(/\s+/g, " ").trim();
+                const target = normalize(
+                  m.module || m.product_name || ""
+                ).replace(/\s*\(.*?\)\s*$/, "");
+                let best: number | undefined = undefined;
+                for (const p of ragContext.relevantProducts || []) {
+                  const pname = normalize(
+                    String(p.metadata?.product_name || "")
+                  ).replace(/\s*\(.*?\)\s*$/, "");
+                  if (
+                    pname === target ||
+                    pname.includes(target) ||
+                    target.includes(pname)
+                  ) {
+                    best = Math.max(best ?? 0, Number(p.score) || 0);
+                  }
+                }
+                return typeof best === "number" ? best : undefined;
+              })
+              .filter((v: any): v is number => typeof v === "number")
+              .map((v: number) => Math.max(0, Math.min(1, v)) * 100)
+              .reduce(
+                (a: number, b: number, _i: number, arr: number[]) => a + b,
+                0
+              ) /
+            Math.max(
+              1,
+              (generatedSolutions || [])
+                .slice(0, 3)
+                .filter((m: any) => typeof m !== "undefined").length
+            )
+          ).toFixed(2)
         );
         if (score >= 80) return "Excellent";
         if (score >= 60) return "High";
@@ -583,6 +711,7 @@ ${contextPrompt}
 Return ONLY a valid JSON array. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks.
 Generate ONLY the recommendedSolutions array for this company. For each SAP module, provide:
 - module (string, MUST be one of the exact product names from the RELEVANT SAP PRODUCTS list above)
+- fitScore (number 1-100 reflecting how strong a fit the module is for this company based on industry, size, challenges, budget, and current systems)
 - fitJustification (5+ sentences written from a SALES PERSPECTIVE, emphasizing why this specific SAP module is the best solution for this company's needs, highlighting unique benefits and competitive advantages, reference company data and retrieved context)
 - priority (number)
 - estimatedROI (realistic, nonzero number, e.g., 18.5)

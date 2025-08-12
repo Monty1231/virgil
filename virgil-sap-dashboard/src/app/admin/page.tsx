@@ -28,6 +28,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  image?: string | null;
   isActive: boolean;
   isAdmin: boolean;
   createdAt: string;

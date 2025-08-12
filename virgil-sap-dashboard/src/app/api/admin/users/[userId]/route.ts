@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +15,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId } = params;
+    const { userId } = await context.params;
     const body = await request.json();
     const { isActive, subscriptionTier, accessGrantedAt } = body;
 

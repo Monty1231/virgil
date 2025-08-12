@@ -22,7 +22,7 @@ console.log(
 );
 
 export const authOptions: NextAuthOptions = {
-  adapter: fixedAdapter,
+  adapter: fixedAdapter as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -44,7 +44,7 @@ export const authOptions: NextAuthOptions = {
         // Use profile data for OAuth authentication (more reliable)
         const userEmail = profile?.email || user?.email;
         const userName = profile?.name || user?.name;
-        const userImage = profile?.picture || user?.image;
+        const userImage = (profile as any)?.picture || (user as any)?.image;
 
         if (!userEmail) {
           console.error("❌ No email found in OAuth data");
@@ -156,7 +156,10 @@ export const authOptions: NextAuthOptions = {
             session.user.id = "0";
             session.user.email = token.email;
             session.user.name = token.name;
-            session.user.image = token.image;
+            session.user.image = (token as any).image as
+              | string
+              | null
+              | undefined;
             session.user.isActive = false;
             session.user.isAdmin = false;
             session.user.subscriptionTier = "basic";
@@ -212,7 +215,7 @@ export const authOptions: NextAuthOptions = {
         console.log("Using OAuth profile data:", profile.email);
         token.email = profile.email;
         token.name = profile.name;
-        token.image = profile.picture;
+        token.image = (profile as any).picture;
 
         // Try to get user data from database using profile email
         try {

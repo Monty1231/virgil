@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Check if we got multiple solutions
     const solutions = analysis.recommendedSolutions || [];
-    const uniqueModules = [...new Set(solutions.map((s) => s.module))];
+    const uniqueModules = [...new Set(solutions.map((s: any) => s.module))];
 
     console.log(
       `🔍 Multi-Module RAG Test: Generated ${solutions.length} solutions with ${uniqueModules.length} unique modules`
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       analysis: {
         solutionsCount: solutions.length,
         uniqueModulesCount: uniqueModules.length,
-        modules: solutions.map((s) => ({
+        modules: solutions.map((s: any) => ({
           module: s.module,
           priority: s.priority,
           roi: s.estimatedROI,

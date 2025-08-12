@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Check results
     const solutions = analysis.recommendedSolutions || [];
-    const uniqueModules = [...new Set(solutions.map(s => s.module))];
+    const uniqueModules = [...new Set(solutions.map((s: any) => s.module))];
 
     return NextResponse.json({
       success: true,
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       analysis: {
         solutionsCount: solutions.length,
         uniqueModulesCount: uniqueModules.length,
-        modules: solutions.map(s => ({
+        modules: solutions.map((s: any) => ({
           module: s.module,
           priority: s.priority,
           roi: s.estimatedROI,

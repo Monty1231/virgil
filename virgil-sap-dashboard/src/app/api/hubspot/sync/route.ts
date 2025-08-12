@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { syncType, data } = body;
-    
+
     const client = getHubSpotClient();
-    
+
     switch (syncType) {
       case "companies":
         return await syncCompanies(client);
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Sync operation failed",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -58,40 +58,47 @@ async function syncCompanies(client: Client) {
     `);
 
     const results = [];
-    
+
     for (const company of companies) {
       try {
         // Check if company already exists in HubSpot
         const searchResponse = await client.crm.companies.searchApi.doSearch({
-          filterGroups: [{
-            filters: [{
-              propertyName: "name",
-              operator: "EQ",
-              value: company.name
-            }]
-          }],
+          filterGroups: [
+            {
+              filters: [
+                {
+                  propertyName: "name",
+                  operator: "EQ" as any,
+                  value: company.name,
+                },
+              ],
+            },
+          ],
           properties: ["name", "industry", "website"],
-          limit: 1
+          limit: 1,
         });
 
         if (searchResponse.results.length > 0) {
           // Update existing company
           const hubspotCompany = searchResponse.results[0];
-          const updatedCompany = await client.crm.companies.basicApi.update(hubspotCompany.id, {
-            properties: {
-              name: company.name,
-              industry: company.industry,
-              website: company.website,
-              description: company.notes,
-              numberofemployees: getCompanySizeNumber(company.company_size)
+          const updatedCompany = await client.crm.companies.basicApi.update(
+            hubspotCompany.id,
+            {
+              properties: {
+                name: company.name,
+                industry: company.industry,
+                website: company.website,
+                description: company.notes,
+                numberofemployees: getCompanySizeNumber(company.company_size),
+              },
             }
-          });
-          
+          );
+
           results.push({
             id: company.id,
             name: company.name,
             action: "updated",
-            hubspotId: updatedCompany.id
+            hubspotId: updatedCompany.id,
           });
         } else {
           // Create new company
@@ -101,15 +108,15 @@ async function syncCompanies(client: Client) {
               industry: company.industry,
               website: company.website,
               description: company.notes,
-              numberofemployees: getCompanySizeNumber(company.company_size)
-            }
+              numberofemployees: getCompanySizeNumber(company.company_size),
+            },
           });
-          
+
           results.push({
             id: company.id,
             name: company.name,
             action: "created",
-            hubspotId: newCompany.id
+            hubspotId: newCompany.id,
           });
         }
       } catch (companyError) {
@@ -118,7 +125,10 @@ async function syncCompanies(client: Client) {
           id: company.id,
           name: company.name,
           action: "error",
-          error: companyError instanceof Error ? companyError.message : "Unknown error"
+          error:
+            companyError instanceof Error
+              ? companyError.message
+              : "Unknown error",
         });
       }
     }
@@ -127,7 +137,7 @@ async function syncCompanies(client: Client) {
       success: true,
       synced: results.length,
       results: results,
-      message: `Synced ${results.length} companies with HubSpot`
+      message: `Synced ${results.length} companies with HubSpot`,
     });
   } catch (error) {
     throw error;
@@ -144,33 +154,39 @@ async function syncContacts(client: Client) {
     `);
 
     const results = [];
-    
+
     for (const company of companies) {
       const contacts = [];
-      
+
       // Add primary contact
       if (company.primary_contact) {
         try {
           const primaryContact = JSON.parse(company.primary_contact);
           contacts.push({
             ...primaryContact,
-            company: company.name
+            company: company.name,
           });
         } catch (e) {
-          console.error(`Error parsing primary contact for ${company.name}:`, e);
+          console.error(
+            `Error parsing primary contact for ${company.name}:`,
+            e
+          );
         }
       }
-      
+
       // Add secondary contact
       if (company.secondary_contact) {
         try {
           const secondaryContact = JSON.parse(company.secondary_contact);
           contacts.push({
             ...secondaryContact,
-            company: company.name
+            company: company.name,
           });
         } catch (e) {
-          console.error(`Error parsing secondary contact for ${company.name}:`, e);
+          console.error(
+            `Error parsing secondary contact for ${company.name}:`,
+            e
+          );
         }
       }
 
@@ -178,36 +194,43 @@ async function syncContacts(client: Client) {
         try {
           // Check if contact already exists in HubSpot
           const searchResponse = await client.crm.contacts.searchApi.doSearch({
-            filterGroups: [{
-              filters: [{
-                propertyName: "email",
-                operator: "EQ",
-                value: contact.email
-              }]
-            }],
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: "email",
+                    operator: "EQ" as any,
+                    value: contact.email,
+                  },
+                ],
+              },
+            ],
             properties: ["email", "firstname", "lastname", "company"],
-            limit: 1
+            limit: 1,
           });
 
           if (searchResponse.results.length > 0) {
             // Update existing contact
             const hubspotContact = searchResponse.results[0];
-            const updatedContact = await client.crm.contacts.basicApi.update(hubspotContact.id, {
-              properties: {
-                email: contact.email,
-                firstname: contact.firstname,
-                lastname: contact.lastname,
-                company: contact.company,
-                phone: contact.phone,
-                jobtitle: contact.jobtitle
+            const updatedContact = await client.crm.contacts.basicApi.update(
+              hubspotContact.id,
+              {
+                properties: {
+                  email: contact.email,
+                  firstname: contact.firstname,
+                  lastname: contact.lastname,
+                  company: contact.company,
+                  phone: contact.phone,
+                  jobtitle: contact.jobtitle,
+                },
               }
-            });
-            
+            );
+
             results.push({
               email: contact.email,
               name: `${contact.firstname} ${contact.lastname}`,
               action: "updated",
-              hubspotId: updatedContact.id
+              hubspotId: updatedContact.id,
             });
           } else {
             // Create new contact
@@ -218,24 +241,30 @@ async function syncContacts(client: Client) {
                 lastname: contact.lastname,
                 company: contact.company,
                 phone: contact.phone,
-                jobtitle: contact.jobtitle
-              }
+                jobtitle: contact.jobtitle,
+              },
             });
-            
+
             results.push({
               email: contact.email,
               name: `${contact.firstname} ${contact.lastname}`,
               action: "created",
-              hubspotId: newContact.id
+              hubspotId: newContact.id,
             });
           }
         } catch (contactError) {
-          console.error(`Error syncing contact ${contact.email}:`, contactError);
+          console.error(
+            `Error syncing contact ${contact.email}:`,
+            contactError
+          );
           results.push({
             email: contact.email,
             name: `${contact.firstname} ${contact.lastname}`,
             action: "error",
-            error: contactError instanceof Error ? contactError.message : "Unknown error"
+            error:
+              contactError instanceof Error
+                ? contactError.message
+                : "Unknown error",
           });
         }
       }
@@ -245,7 +274,7 @@ async function syncContacts(client: Client) {
       success: true,
       synced: results.length,
       results: results,
-      message: `Synced ${results.length} contacts with HubSpot`
+      message: `Synced ${results.length} contacts with HubSpot`,
     });
   } catch (error) {
     throw error;
@@ -266,43 +295,52 @@ async function syncDeals(client: Client) {
     `);
 
     const results = [];
-    
+
     for (const deal of deals) {
       try {
         // Check if deal already exists in HubSpot
         const searchResponse = await client.crm.deals.searchApi.doSearch({
-          filterGroups: [{
-            filters: [{
-              propertyName: "dealname",
-              operator: "EQ",
-              value: deal.deal_name
-            }]
-          }],
+          filterGroups: [
+            {
+              filters: [
+                {
+                  propertyName: "dealname",
+                  operator: "EQ" as any,
+                  value: deal.deal_name,
+                },
+              ],
+            },
+          ],
           properties: ["dealname", "amount", "dealstage"],
-          limit: 1
+          limit: 1,
         });
 
         const dealstage = mapDealStage(deal.stage);
-        const amount = deal.deal_value ? parseFloat(deal.deal_value.toString()) : 0;
+        const amount = deal.deal_value
+          ? parseFloat(deal.deal_value.toString())
+          : 0;
 
         if (searchResponse.results.length > 0) {
           // Update existing deal
           const hubspotDeal = searchResponse.results[0];
-          const updatedDeal = await client.crm.deals.basicApi.update(hubspotDeal.id, {
-            properties: {
-              dealname: deal.deal_name,
-              amount: amount.toString(),
-              dealstage: dealstage,
-              closedate: deal.expected_close_date,
-              description: deal.notes
+          const updatedDeal = await client.crm.deals.basicApi.update(
+            hubspotDeal.id,
+            {
+              properties: {
+                dealname: deal.deal_name,
+                amount: amount.toString(),
+                dealstage: dealstage,
+                closedate: deal.expected_close_date,
+                description: deal.notes,
+              },
             }
-          });
-          
+          );
+
           results.push({
             id: deal.id,
             name: deal.deal_name,
             action: "updated",
-            hubspotId: updatedDeal.id
+            hubspotId: updatedDeal.id,
           });
         } else {
           // Create new deal
@@ -312,15 +350,15 @@ async function syncDeals(client: Client) {
               amount: amount.toString(),
               dealstage: dealstage,
               closedate: deal.expected_close_date,
-              description: deal.notes
-            }
+              description: deal.notes,
+            },
           });
-          
+
           results.push({
             id: deal.id,
             name: deal.deal_name,
             action: "created",
-            hubspotId: newDeal.id
+            hubspotId: newDeal.id,
           });
         }
       } catch (dealError) {
@@ -329,7 +367,8 @@ async function syncDeals(client: Client) {
           id: deal.id,
           name: deal.deal_name,
           action: "error",
-          error: dealError instanceof Error ? dealError.message : "Unknown error"
+          error:
+            dealError instanceof Error ? dealError.message : "Unknown error",
         });
       }
     }
@@ -338,7 +377,7 @@ async function syncDeals(client: Client) {
       success: true,
       synced: results.length,
       results: results,
-      message: `Synced ${results.length} deals with HubSpot`
+      message: `Synced ${results.length} deals with HubSpot`,
     });
   } catch (error) {
     throw error;
@@ -356,7 +395,7 @@ async function syncAll(client: Client) {
       companies: companiesResult,
       contacts: contactsResult,
       deals: dealsResult,
-      message: "Full sync completed successfully"
+      message: "Full sync completed successfully",
     });
   } catch (error) {
     throw error;
@@ -366,22 +405,22 @@ async function syncAll(client: Client) {
 // Helper functions
 function getCompanySizeNumber(size: string): string {
   const sizeMap: Record<string, string> = {
-    "Small": "1-10",
-    "Medium": "11-50",
-    "Large": "51-200",
-    "Enterprise": "201-1000",
-    "Fortune 500": "1000+"
+    Small: "1-10",
+    Medium: "11-50",
+    Large: "51-200",
+    Enterprise: "201-1000",
+    "Fortune 500": "1000+",
   };
   return sizeMap[size] || "1-10";
 }
 
 function mapDealStage(stage: string): string {
   const stageMap: Record<string, string> = {
-    "Discovery": "appointmentscheduled",
-    "Proposal": "qualifiedtobuy",
-    "Demo": "presentationscheduled",
-    "Negotiation": "contractsent",
-    "Closed-Won": "closedwon"
+    Discovery: "appointmentscheduled",
+    Proposal: "qualifiedtobuy",
+    Demo: "presentationscheduled",
+    Negotiation: "contractsent",
+    "Closed-Won": "closedwon",
   };
   return stageMap[stage] || "appointmentscheduled";
-} 
+}

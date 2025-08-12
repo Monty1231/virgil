@@ -116,7 +116,7 @@ Respond in JSON format:
     console.log("🤖 OpenAI response received");
 
     // Parse the JSON response
-    let recommendations;
+    let recommendations: any;
     try {
       recommendations = JSON.parse(text);
       // Normalize implementationRoadmap fields to always be arrays
@@ -125,7 +125,7 @@ Respond in JSON format:
         Array.isArray(recommendations.implementationRoadmap)
       ) {
         recommendations.implementationRoadmap =
-          recommendations.implementationRoadmap.map((phase) => ({
+          recommendations.implementationRoadmap.map((phase: any) => ({
             ...phase,
             activities: Array.isArray(phase.activities)
               ? phase.activities
@@ -146,17 +146,19 @@ Respond in JSON format:
       }
       // If modules exist, ensure each module has fitJustification, reasoning, traceability fields if present
       if (recommendations && Array.isArray(recommendations.modules)) {
-        recommendations.modules = recommendations.modules.map((module) => ({
-          ...module,
-          fitJustification:
-            module.fitJustification || module.fit_justification || "",
-          reasoning: module.reasoning || "",
-          traceability: Array.isArray(module.traceability)
-            ? module.traceability
-            : module.traceability
-            ? [module.traceability]
-            : [],
-        }));
+        recommendations.modules = recommendations.modules.map(
+          (module: any) => ({
+            ...module,
+            fitJustification:
+              module.fitJustification || module.fit_justification || "",
+            reasoning: module.reasoning || "",
+            traceability: Array.isArray(module.traceability)
+              ? module.traceability
+              : module.traceability
+              ? [module.traceability]
+              : [],
+          })
+        );
       }
       // Pass through extra fields if present
       [

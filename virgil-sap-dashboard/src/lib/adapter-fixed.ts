@@ -13,7 +13,10 @@ export const fixedAdapter = {
   },
 
   // Override getUserByAccount to use the correct model name
-  async getUserByAccount(provider: string, providerAccountId: string) {
+  async getUserByAccount(
+    provider: string | { provider: string; providerAccountId?: string },
+    providerAccountId: string
+  ) {
     try {
       console.log("getUserByAccount called with:", {
         provider,
@@ -21,7 +24,10 @@ export const fixedAdapter = {
       });
 
       // Handle case where provider is an object (from NextAuth.js)
-      if (typeof provider === "object" && provider.providerAccountId) {
+      if (
+        typeof provider === "object" &&
+        typeof provider.providerAccountId === "string"
+      ) {
         providerAccountId = provider.providerAccountId;
         provider = provider.provider;
       }
@@ -30,7 +36,10 @@ export const fixedAdapter = {
       let account = await prisma.account.findFirst({
         where: {
           AND: [
-            { provider: provider },
+            {
+              provider:
+                typeof provider === "string" ? provider : provider.provider,
+            },
             { providerAccountId: providerAccountId },
           ],
         },

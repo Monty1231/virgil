@@ -36,18 +36,20 @@ export class RAGServiceFast {
       const challenges = companyContext.business_challenges
         ? [companyContext.business_challenges]
         : ["business optimization"];
-      
+
       const relevantProducts = await knowledgeBase.getSAPProductRecommendations(
         companyContext.industry,
         challenges
       );
       const vectorEnd = Date.now();
-      console.log(`⏱️ Fast RAG: Vector search took ${vectorEnd - vectorStart}ms`);
+      console.log(
+        `⏱️ Fast RAG: Vector search took ${vectorEnd - vectorStart}ms`
+      );
 
       // Step 2: Single LLM call for everything (instead of 3 separate calls)
       const llmStart = Date.now();
       const prompt = this.buildFastPrompt(companyContext, relevantProducts);
-      
+
       const { text: analysisTextRaw } = await generateText({
         model: openai("gpt-4o"),
         prompt,
@@ -60,13 +62,133 @@ export class RAGServiceFast {
       // Step 3: Parse and format results
       let analysisText = analysisTextRaw.trim();
       if (analysisText.startsWith("```json")) {
-        analysisText = analysisText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+        analysisText = analysisText
+          .replace(/^```json\s*/, "")
+          .replace(/\s*```$/, "");
       }
 
       const analysis = JSON.parse(analysisText);
-      
+
+      // Post-process: compute objective fitScore from vector similarity and basic alignment
+      try {
+        const relevant = relevantProducts || [];
+        const normalize = (s: string) =>
+          s.toLowerCase().replace(/\s+/g, " ").trim();
+        const companyIndustry = companyContext.industry || "";
+        const budgetStr = companyContext.budget || "";
+        const parseBudgetRange = (
+          text: string
+        ): { min?: number; max?: number } => {
+          if (!text) return {};
+          const normalizedB = text
+            .toLowerCase()
+            .replace(/\$/g, "")
+            .replace(/\s/g, "");
+          const match = normalizedB.match(
+            /(\d+(?:\.\d+)?\s*[km]?)\s*[-–to]+\s*(\d+(?:\.\d+)?\s*[km]?)/i
+          );
+          const single = normalizedB.match(/^(\d+(?:\.\d+)?)([km])?$/i);
+          const toNumber = (s: string) => {
+            const m = s.match(/(\d+(?:\.\d+)?)([km])?/i);
+            if (!m) return undefined;
+            const val = parseFloat(m[1]);
+            const suf = (m[2] || "").toLowerCase();
+            if (suf === "m") return val * 1_000_000;
+            if (suf === "k") return val * 1_000;
+            return val;
+          };
+          if (match)
+            return { min: toNumber(match[1]), max: toNumber(match[2]) };
+          if (single) {
+            const v = toNumber(single[0]);
+            return { min: v, max: v };
+          }
+          return {};
+        };
+        const budget = parseBudgetRange(budgetStr);
+
+        const findVectorScore = (name: string): number | undefined => {
+          const target = normalize(name).replace(/\s*\(.*?\)\s*$/, "");
+          let best: number | undefined = undefined;
+          for (const p of relevant) {
+            const pname = normalize(
+              String(p.metadata?.product_name || "")
+            ).replace(/\s*\(.*?\)\s*$/, "");
+            if (
+              pname === target ||
+              pname.includes(target) ||
+              target.includes(pname)
+            ) {
+              best = Math.max(best ?? 0, Number(p.score) || 0);
+            }
+          }
+          return best;
+        };
+
+        const industryAligned = (name: string): boolean => {
+          for (const p of relevant) {
+            const pname = normalize(String(p.metadata?.product_name || ""));
+            if (pname.includes(normalize(name))) {
+              const inds: string[] = Array.isArray(p.metadata?.industries)
+                ? p.metadata.industries
+                : [];
+              if (inds.map(normalize).includes(normalize(companyIndustry)))
+                return true;
+            }
+          }
+          return false;
+        };
+
+        if (Array.isArray(analysis?.recommendedSolutions)) {
+          analysis.recommendedSolutions = analysis.recommendedSolutions.map(
+            (s: any) => {
+              const vs = findVectorScore(s.module || s.product_name || "");
+              let base =
+                typeof vs === "number"
+                  ? Number((Math.max(0, Math.min(1, vs)) * 100).toFixed(2))
+                  : NaN;
+              if (Number.isNaN(base)) {
+                const raw = s.fitScore ?? s.fit_score ?? null;
+                if (typeof raw === "number" && Number.isFinite(raw))
+                  base = Number(raw.toFixed(2));
+                else {
+                  const fitStr = String(s.fit || "").toLowerCase();
+                  if (fitStr.includes("high")) base = 85;
+                  else if (fitStr.includes("medium")) base = 65;
+                  else if (fitStr.includes("low")) base = 40;
+                  else base = 60;
+                }
+              }
+              return {
+                ...s,
+                fitScore: Number(Math.max(0, Math.min(100, base)).toFixed(2)),
+                retrievalScore:
+                  typeof vs === "number" ? Math.round(vs * 100) : undefined,
+              };
+            }
+          );
+          // Sort by fitScore descending and reassign priority 1..n
+          analysis.recommendedSolutions.sort(
+            (a: any, b: any) =>
+              (b.fitScore ?? -Infinity) - (a.fitScore ?? -Infinity)
+          );
+          analysis.recommendedSolutions.forEach((m: any, idx: number) => {
+            m.priority = idx + 1;
+          });
+        }
+      } catch (e) {
+        console.warn(
+          "Fast RAG: fitScore post-process failed, keeping model values",
+          e
+        );
+      }
+
       const totalTime = Date.now() - startTime;
-      console.log(`⏱️ Fast RAG: Total time: ${totalTime}ms (${(totalTime/1000).toFixed(1)}s)`);
+      console.log(
+        `⏱️ Fast RAG: Total time: ${totalTime}ms (${(totalTime / 1000).toFixed(
+          1
+        )}s)`
+      );
 
       return analysis;
     } catch (error) {
@@ -75,13 +197,20 @@ export class RAGServiceFast {
     }
   }
 
-  private buildFastPrompt(company: CompanyContext, products: VectorSearchResult[]): string {
+  private buildFastPrompt(
+    company: CompanyContext,
+    products: VectorSearchResult[]
+  ): string {
     const productInfo = products
       .slice(0, 6) // Limit to top 6 products for faster processing
-      .map(p => `- ${p.metadata.product_name}: ${p.content.substring(0, 120)}...`)
-      .join('\n');
+      .map(
+        (p) => `- ${p.metadata.product_name}: ${p.content.substring(0, 120)}...`
+      )
+      .join("\n");
 
-    return `Generate a complete SAP analysis for ${company.name} (${company.industry} industry, ${company.company_size}).
+    return `Generate a complete SAP analysis for ${company.name} (${
+      company.industry
+    } industry, ${company.company_size}).
 
 Company Context:
 - Challenges: ${company.business_challenges || "Business optimization"}
@@ -97,6 +226,7 @@ Return ONLY a JSON object with:
   "recommendedSolutions": [
     {
       "module": "SAP Product Name",
+      "fitScore": 70,
       "fitJustification": "Why this fits (2-3 sentences)",
       "priority": 1,
       "addressedProblems": ["Problem 1", "Problem 2"],
@@ -113,6 +243,7 @@ Return ONLY a JSON object with:
     },
     {
       "module": "Different SAP Product",
+      "fitScore": 65,
       "fitJustification": "Why this fits (2-3 sentences)",
       "priority": 2,
       "estimatedROI": 18,
@@ -126,6 +257,7 @@ Return ONLY a JSON object with:
     },
     {
       "module": "Another SAP Product",
+      "fitScore": 60,
       "fitJustification": "Why this fits (2-3 sentences)",
       "priority": 3,
       "estimatedROI": 16,
@@ -175,4 +307,4 @@ For each solution, provide a reasoning/explanation field that makes the model's 
   }
 }
 
-export const ragServiceFast = new RAGServiceFast(); 
+export const ragServiceFast = new RAGServiceFast();

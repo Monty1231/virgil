@@ -93,12 +93,8 @@ export function AppSidebar() {
             />
           </div>
           <div className="flex-shrink-0 min-w-0 flex-1 -ml-12">
-            <h1 className="text-sm font-semibold text-sidebar-foreground truncate">
-              
-            </h1>
-            <p className="text-xs text-sidebar-muted-foreground truncate">
-              
-            </p>
+            <h1 className="text-sm font-semibold text-sidebar-foreground truncate"></h1>
+            <p className="text-xs text-sidebar-muted-foreground truncate"></p>
           </div>
         </div>
       </SidebarHeader>

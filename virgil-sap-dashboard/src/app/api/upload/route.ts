@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           const data = await pdfParse(s3Buffer);
           fileContent = data.text;
           contentExtracted = !!fileContent && fileContent.length > 0;
-        } catch (pdfError) {
+        } catch (pdfError: any) {
           console.error("PDF parsing error:", pdfError);
           if (
             pdfError.message?.includes("bad XRef") ||

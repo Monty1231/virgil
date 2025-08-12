@@ -31,7 +31,7 @@ export async function GET() {
   try {
     console.log("📊 RAG Init: Getting knowledge base status...");
 
-    const stats = await knowledgeBase.getIndexStats();
+    const stats = await knowledgeBase.getKnowledgeBaseStatus();
 
     return NextResponse.json({
       success: true,

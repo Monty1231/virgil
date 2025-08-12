@@ -1,6 +1,55 @@
 import { type NextRequest, NextResponse } from "next/server";
 import sql from "@/lib/db";
 
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+
+    const result = await sql.query(
+      `
+      SELECT 
+        d.id,
+        d.company_id,
+        d.deal_name,
+        d.stage,
+        d.deal_value,
+        d.notes,
+        d.last_activity,
+        d.expected_close_date,
+        c.priority as priority,
+        c.name as company_name,
+        c.industry as company_industry,
+        c.company_size as company_size,
+        c.region as company_region,
+        u.name as ae_name
+      FROM deals d
+      LEFT JOIN companies c ON d.company_id = c.id
+      LEFT JOIN users u ON d.ae_assigned = u.id
+      WHERE d.id = $1
+    `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { error: `Deal ${id} not found` },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(result.rows[0]);
+  } catch (error) {
+    console.error("GET /api/deals/[id] error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch deal" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

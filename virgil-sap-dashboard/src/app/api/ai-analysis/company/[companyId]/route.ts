@@ -197,6 +197,7 @@ export async function GET(
 Return ONLY a valid JSON array. Do NOT include any explanation, markdown, or extra text. Do NOT use markdown code blocks.
 Generate ONLY the recommendedSolutions array for this company. For each SAP module, provide:
 - module (string, must match a real SAP product)
+- fitScore (number 1-100 indicating how strong a fit the module is for this company based on industry, size, stated challenges, budget, and current systems)
 - fitJustification (5+ sentences written from a SALES PERSPECTIVE, emphasizing why this specific SAP module is the best solution for this company's needs, highlighting unique benefits and competitive advantages, reference company data and uploaded files)
 - priority (number)
 - estimatedROI (realistic, nonzero number, e.g., 18.5)
@@ -784,7 +785,7 @@ Return ONLY the final JSON object, with no explanation, markdown, or extra text.
   }
 }
 
-export function createAdvancedFallbackAnalysis(
+function createAdvancedFallbackAnalysis(
   company: any,
   dealRows: any[],
   totalPipelineValue: number,

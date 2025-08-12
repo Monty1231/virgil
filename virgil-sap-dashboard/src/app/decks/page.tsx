@@ -61,6 +61,7 @@ interface AIAnalysis {
     recommendedSolutions: Array<{
       module: string;
       fit: string;
+      fitScore?: number;
       priority: number;
       estimatedROI: number;
       timeToValue: string;
@@ -499,7 +500,18 @@ Transforming ${analysis.industry || "Business"} Operations with SAP Solutions`,
       // Recommended Solutions
       if (recommendedSolutions.length > 0) {
         const topSolutions = recommendedSolutions
-          .sort((a, b) => (a.priority || 1) - (b.priority || 1))
+          .sort((a, b) => {
+            const fb =
+              typeof (b as any).fitScore === "number"
+                ? (b as any).fitScore
+                : -Infinity;
+            const fa =
+              typeof (a as any).fitScore === "number"
+                ? (a as any).fitScore
+                : -Infinity;
+            if (Number.isFinite(fa) || Number.isFinite(fb)) return fb - fa;
+            return (a.priority || 1) - (b.priority || 1);
+          })
           .slice(0, 3);
 
         generatedSlides.push({
@@ -510,7 +522,13 @@ Transforming ${analysis.industry || "Business"} Operations with SAP Solutions`,
               (solution) =>
                 `• SAP ${solution.module || "Solution"} - ${
                   solution.fit || "High"
-                } Fit
+                } Fit${
+                  typeof solution.fitScore === "number"
+                    ? ` (Fit Score ${(solution.fitScore as number).toFixed(
+                        2
+                      )}%)`
+                    : ""
+                }
   - ROI: ${solution.estimatedROI || 300}%
   - Time to Value: ${solution.timeToValue || "12-18 months"}
   - Investment: $${((solution.estimatedCostMin || 500000) / 1000).toFixed(

@@ -4,6 +4,48 @@ import sql from "@/lib/db";
 import { ragService, CompanyContext } from "@/lib/rag-service";
 import { knowledgeBase } from "@/lib/knowledge-base";
 
+function createLocalFallbackAnalysis(
+  company: any,
+  dealRows: any[],
+  totalPipelineValue: number,
+  avgDealValue: number,
+  highProbabilityDeals: any[],
+  sapProducts: any[]
+) {
+  return {
+    fitScore: null,
+    overallFit: null,
+    executiveSummary: `No AI-generated summary available for ${company.name}.`,
+    keyFindings: [],
+    keySuccessFactors: [
+      "Executive sponsorship and change management commitment",
+      "Phased implementation approach with clear milestones",
+      "Comprehensive user training and adoption strategy",
+    ],
+    businessChallenges: [],
+    recommendedSolutions: [],
+    financialAnalysis: {
+      investmentCalculation: { methodology: null, totalInvestment: null },
+      savingsProjection: { methodology: null, annualSavings: null },
+      roiAnalysis: {
+        paybackPeriod: null,
+        netPresentValue: null,
+        riskAdjustedROI: null,
+      },
+    },
+    implementationRoadmap: [],
+    competitiveAnalysis: {},
+    riskFactors: [],
+    businessCase: {
+      totalInvestment: null,
+      projectedSavings: null,
+      paybackPeriod: null,
+      netPresentValue: null,
+      riskAdjustedROI: null,
+    },
+  };
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ companyId: string }> }
@@ -97,9 +139,6 @@ export async function GET(
     console.log("🤖 RAG AI Analysis: Generating analysis with RAG...");
     const analysis = await ragService.generateAnalysis(companyContext);
 
-    // Log the raw LLM output for business case/financials
-    console.log("🤖 RAW ANALYSIS OUTPUT:", JSON.stringify(analysis, null, 2));
-
     // Normalize implementationRoadmap fields to always be arrays
     if (analysis && Array.isArray(analysis.implementationRoadmap)) {
       analysis.implementationRoadmap = analysis.implementationRoadmap.map(
@@ -139,8 +178,6 @@ export async function GET(
       !analysis.recommendedSolutions ||
       !analysis.businessChallenges
     ) {
-      // Import createAdvancedFallbackAnalysis dynamically from parent route
-      const { createAdvancedFallbackAnalysis } = await import("../route");
       // Calculate pipeline metrics for fallback
       const totalPipelineValue = dealRows.reduce(
         (sum, deal) => sum + (Number(deal.deal_value) || 0),
@@ -157,7 +194,7 @@ export async function GET(
         [company.industry]
       );
       const sapProducts = sapProductsResult.rows;
-      const fallbackAnalysis = createAdvancedFallbackAnalysis(
+      const fallbackAnalysis = createLocalFallbackAnalysis(
         company,
         dealRows,
         totalPipelineValue,
@@ -171,21 +208,6 @@ export async function GET(
           "Not enough data for a full RAG analysis. This is a fallback report. Please upload files or add more company information for a more detailed analysis.",
         analysis: fallbackAnalysis,
       });
-    }
-
-    // Validate the analysis
-    if (
-      !analysis ||
-      !analysis.recommendedSolutions ||
-      !analysis.businessChallenges
-    ) {
-      return NextResponse.json(
-        {
-          error: "RAG analysis failed to generate complete results",
-          details: "Missing required analysis components",
-        },
-        { status: 422 }
-      );
     }
 
     // Store the analysis in database

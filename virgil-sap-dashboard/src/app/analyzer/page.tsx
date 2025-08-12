@@ -78,6 +78,7 @@ interface AIAnalysis {
   recommendedSolutions: {
     module: string;
     fit?: string;
+    fitScore?: number;
     fitJustification?: string;
     priority: number;
     estimatedROI?: number;
@@ -1273,7 +1274,20 @@ export default function Analyzer() {
 
                   {Array.isArray(analysisData.recommendedSolutions) ? (
                     analysisData.recommendedSolutions
-                      .sort((a, b) => a.priority - b.priority)
+                      .sort((a, b) => {
+                        const fb =
+                          typeof b.fitScore === "number"
+                            ? b.fitScore
+                            : -Infinity;
+                        const fa =
+                          typeof a.fitScore === "number"
+                            ? a.fitScore
+                            : -Infinity;
+                        if (Number.isFinite(fa) || Number.isFinite(fb)) {
+                          return fb - fa;
+                        }
+                        return (a.priority || 1) - (b.priority || 1);
+                      })
                       .map((solution, index) => (
                         <Card
                           key={`${solution.module}-${index}`}
@@ -1293,6 +1307,14 @@ export default function Analyzer() {
                                 >
                                   {solution.fit || "Medium"} Fit
                                 </Badge>
+                                {typeof solution.fitScore === "number" && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs border-green-300 bg-green-50 text-green-700 font-semibold rounded-full px-3 py-1"
+                                  >
+                                    Fit Score {solution.fitScore.toFixed(2)}%
+                                  </Badge>
+                                )}
                                 <Badge
                                   variant="outline"
                                   className="text-xs border-slate-300 bg-slate-100 text-slate-700 font-medium rounded-full px-3 py-1"
@@ -1523,8 +1545,8 @@ export default function Analyzer() {
                                         const sentences = text
                                           .split(/[.!?]+/)
                                           .filter((s) => s.trim().length > 20);
-                                        const chunks = [];
-                                        let currentChunk = "";
+                                        const chunks: string[] = [];
+                                        let currentChunk: string = "";
 
                                         sentences.forEach((sentence, index) => {
                                           currentChunk +=
@@ -2020,32 +2042,35 @@ export default function Analyzer() {
                     <div className="grid gap-2 sm:grid-cols-2">
                       {analysisData.riskFactors &&
                       Array.isArray(analysisData.riskFactors) ? (
-                        analysisData.riskFactors.map((risk, index) => (
-                          <div
-                            key={index}
-                            className="flex flex-col gap-1 p-3 bg-red-50 rounded-lg border border-red-200"
-                          >
-                            <div className="flex items-start gap-2">
-                              <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                              {typeof risk === "object" &&
-                              risk !== null &&
-                              "risk" in risk &&
-                              "mitigation" in risk ? (
-                                <span className="text-sm text-red-800">
-                                  <strong>Risk:</strong> {risk.risk}
-                                  <br />
-                                  <strong>Mitigation:</strong> {risk.mitigation}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-red-800">
-                                  {typeof risk === "string"
-                                    ? risk
-                                    : JSON.stringify(risk)}
-                                </span>
-                              )}
+                        analysisData.riskFactors.map(
+                          (risk: any, index: number) => (
+                            <div
+                              key={index}
+                              className="flex flex-col gap-1 p-3 bg-red-50 rounded-lg border border-red-200"
+                            >
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                                {typeof risk === "object" &&
+                                risk !== null &&
+                                "risk" in risk &&
+                                "mitigation" in risk ? (
+                                  <span className="text-sm text-red-800">
+                                    <strong>Risk:</strong> {risk.risk}
+                                    <br />
+                                    <strong>Mitigation:</strong>{" "}
+                                    {risk.mitigation}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-red-800">
+                                    {typeof risk === "string"
+                                      ? risk
+                                      : JSON.stringify(risk)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          )
+                        )
                       ) : (
                         <div className="col-span-2 text-center py-4 text-slate-400 italic">
                           No risk factors identified.

@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"],
+  darkMode: ["class", ".dark"],
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -111,10 +111,10 @@ const config: Config = {
           700: "#4338ca",
           800: "#3730a3",
           900: "#312e81",
-          950: "#1e1b4b",
-        },
-        accent: {
-          50: "#fff7ed",
+                    950: "#1e1b4b",
+         },
+         brandAccent: {
+           50: "#fff7ed",
           100: "#ffedd5",
           200: "#fed7aa",
           300: "#fdba74",
