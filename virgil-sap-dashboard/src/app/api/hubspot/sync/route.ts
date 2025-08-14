@@ -1,23 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@hubspot/api-client";
 import sql from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getUserHubSpotClient } from "@/lib/hubspot";
 
-// Initialize HubSpot client
-const getHubSpotClient = () => {
-  const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
-  if (!accessToken) {
-    throw new Error("HUBSPOT_ACCESS_TOKEN environment variable is required");
+// Load client for current user
+const getClient = async (): Promise<Client> => {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || session.user.id === "0") {
+    throw new Error("Unauthorized");
   }
-  return new Client({ accessToken });
+  return getUserHubSpotClient(Number(session.user.id));
 };
 
-// Sync data with HubSpot
+// GET: List companies from HubSpot (for import)
+export async function GET() {
+  try {
+    const client = await getClient();
+    const page = await client.crm.companies.basicApi.getPage(100, undefined, [
+      "name",
+      "industry",
+      "website",
+      "numberofemployees",
+      "phone",
+    ]);
+    const companies = page.results.map((c: any) => ({
+      id: c.id,
+      name: c.properties?.name || "",
+      industry: c.properties?.industry || "",
+      website: c.properties?.website || "",
+      employees: c.properties?.numberofemployees || "",
+      phone: c.properties?.phone || "",
+    }));
+    return NextResponse.json({ success: true, companies });
+  } catch (error) {
+    console.error("HubSpot list companies error:", error);
+    return NextResponse.json(
+      { success: false, error: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+// Sync data with HubSpot (existing POST functionality)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { syncType, data } = body;
-
-    const client = getHubSpotClient();
+    const { syncType } = body;
+    const client = await getClient();
 
     switch (syncType) {
       case "companies":
@@ -37,10 +68,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("HubSpot sync error:", error);
     return NextResponse.json(
-      {
-        error: "Sync operation failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Sync operation failed", details: (error as Error).message },
       { status: 500 }
     );
   }
@@ -50,14 +78,14 @@ async function syncCompanies(client: Client) {
   try {
     // Fetch companies from local database
     const { rows: companies } = await sql.query(`
-      SELECT id, name, industry, company_size, region, website, 
-             business_challenges, current_systems, budget, timeline, 
-             priority, primary_contact, secondary_contact, notes, tags
-      FROM companies
-      ORDER BY name ASC
-    `);
+		  SELECT id, name, industry, company_size, region, website, 
+		         business_challenges, current_systems, budget, timeline, 
+		         priority, primary_contact, secondary_contact, notes, tags
+		  FROM companies
+		  ORDER BY name ASC
+		`);
 
-    const results = [];
+    const results: any[] = [];
 
     for (const company of companies) {
       try {
@@ -136,7 +164,7 @@ async function syncCompanies(client: Client) {
     return NextResponse.json({
       success: true,
       synced: results.length,
-      results: results,
+      results,
       message: `Synced ${results.length} companies with HubSpot`,
     });
   } catch (error) {
@@ -148,10 +176,10 @@ async function syncContacts(client: Client) {
   try {
     // Fetch contacts from local database (from companies table)
     const { rows: companies } = await sql.query(`
-      SELECT id, name, primary_contact, secondary_contact
-      FROM companies
-      WHERE primary_contact IS NOT NULL OR secondary_contact IS NOT NULL
-    `);
+		  SELECT id, name, primary_contact, secondary_contact
+		  FROM companies
+		  WHERE primary_contact IS NOT NULL OR secondary_contact IS NOT NULL
+		`);
 
     const results = [];
 
@@ -285,14 +313,14 @@ async function syncDeals(client: Client) {
   try {
     // Fetch deals from local database
     const { rows: deals } = await sql.query(`
-      SELECT d.id, d.deal_name, d.stage, d.deal_value, d.notes, 
-             d.expected_close_date, d.priority, d.last_activity,
-             c.name as company_name, u.name as ae_name
-      FROM deals d
-      LEFT JOIN companies c ON d.company_id = c.id
-      LEFT JOIN users u ON d.ae_assigned = u.id
-      ORDER BY d.last_activity DESC
-    `);
+		  SELECT d.id, d.deal_name, d.stage, d.deal_value, d.notes, 
+		         d.expected_close_date, d.priority, d.last_activity,
+		         c.name as company_name, u.name as ae_name
+		  FROM deals d
+		  LEFT JOIN companies c ON d.company_id = c.id
+		  LEFT JOIN users u ON d.ae_assigned = u.id
+		  ORDER BY d.last_activity DESC
+		`);
 
     const results = [];
 

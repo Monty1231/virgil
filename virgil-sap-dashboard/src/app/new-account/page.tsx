@@ -253,6 +253,14 @@ export default function NewAccount(): ReactElement {
   const [inlineSubmitting, setInlineSubmitting] = useState(false);
   const [inlineDeletingId, setInlineDeletingId] = useState<number | null>(null);
 
+  // HubSpot import state
+  const [importOpen, setImportOpen] = useState(false);
+  const [hsCompanies, setHsCompanies] = useState<any[]>([]);
+  const [hsLoading, setHsLoading] = useState(false);
+  const [hsSelected, setHsSelected] = useState<string[]>([]);
+  const [hsImporting, setHsImporting] = useState(false);
+  const [hsError, setHsError] = useState<string | null>(null);
+
   const loadInlineCompanies = async () => {
     setInlineLoading(true);
     setInlineError(null);
@@ -320,6 +328,49 @@ export default function NewAccount(): ReactElement {
     } finally {
       setInlineDeletingId(null);
     }
+  };
+
+  const loadHsCompanies = async () => {
+    setHsLoading(true);
+    setHsError(null);
+    try {
+      const res = await fetch("/api/hubspot/sync", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to load HubSpot companies");
+      setHsCompanies(Array.isArray(data.companies) ? data.companies : []);
+    } catch (e: any) {
+      setHsError(e.message || "Failed to load HubSpot companies");
+      setHsCompanies([]);
+    } finally {
+      setHsLoading(false);
+    }
+  };
+
+  const importHsSelected = async () => {
+    if (hsSelected.length === 0) return;
+    setHsImporting(true);
+    setHsError(null);
+    try {
+      const res = await fetch("/api/hubspot/import/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hubspotCompanyIds: hsSelected }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Import failed");
+      setImportOpen(false);
+      setHsSelected([]);
+      await loadInlineCompanies();
+      companiesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e: any) {
+      setHsError(e.message || "Import failed");
+    } finally {
+      setHsImporting(false);
+    }
+  };
+
+  const toggleHsSelection = (id: string, checked: boolean) => {
+    setHsSelected((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
   };
 
   const steps = [
@@ -808,13 +859,27 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
               Comprehensive prospect information capture with document upload
             </p>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-500 mb-1">Form Progress</div>
-            <div className="flex items-center gap-2">
-              <Progress value={calculateProgress()} className="w-24" />
-              <span className="text-sm font-medium">
-                {calculateProgress()}%
-              </span>
+          <div className="flex items-center gap-3">
+            {!isEmbedded && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setImportOpen(true);
+                  if (hsCompanies.length === 0) void loadHsCompanies();
+                }}
+              >
+                Import from HubSpot
+              </Button>
+            )}
+            <div className="text-right">
+              <div className="text-sm text-gray-500 mb-1">Form Progress</div>
+              <div className="flex items-center gap-2">
+                <Progress value={calculateProgress()} className="w-24" />
+                <span className="text-sm font-medium">
+                  {calculateProgress()}%
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -2313,6 +2378,82 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
               </Button>
               <Button onClick={submitInlineEdit} disabled={inlineSubmitting}>
                 {inlineSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* HubSpot import dialog */}
+      {!isEmbedded && (
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogContent className="sm:max-w-[800px] max-h-[85vh] p-0 flex flex-col">
+            <DialogHeader className="px-6 pt-6">
+              <DialogTitle>Import Companies from HubSpot</DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-4 flex-1 overflow-y-auto">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm text-muted-foreground">
+                  Select companies to import into Virgil
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={loadHsCompanies} disabled={hsLoading}>
+                    {hsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                  </Button>
+                  <Button size="sm" onClick={importHsSelected} disabled={hsSelected.length === 0 || hsImporting}>
+                    {hsImporting ? "Importing..." : `Import${hsSelected.length ? ` (${hsSelected.length})` : ""}`}
+                  </Button>
+                </div>
+              </div>
+              {hsError && (
+                <Alert className="mb-3 border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{hsError}</AlertDescription>
+                </Alert>
+              )}
+              <div className="overflow-x-auto border rounded-md">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr className="text-left">
+                      <th className="py-2 px-3">Select</th>
+                      <th className="py-2 px-3">Name</th>
+                      <th className="py-2 px-3">Industry</th>
+                      <th className="py-2 px-3">Website</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hsCompanies.map((c: any) => (
+                      <tr key={c.id} className="border-t">
+                        <td className="py-2 px-3">
+                          <input
+                            type="checkbox"
+                            checked={hsSelected.includes(c.id)}
+                            onChange={(e) => toggleHsSelection(c.id, e.target.checked)}
+                          />
+                        </td>
+                        <td className="py-2 px-3 font-medium">{c.name}</td>
+                        <td className="py-2 px-3">{c.industry || "-"}</td>
+                        <td className="py-2 px-3 truncate max-w-[260px]">
+                          {c.website ? (
+                            <a href={c.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                              {c.website}
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="border-t bg-background px-6 py-3 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setImportOpen(false)} disabled={hsImporting}>
+                Close
+              </Button>
+              <Button onClick={importHsSelected} disabled={hsSelected.length === 0 || hsImporting}>
+                {hsImporting ? "Importing..." : "Import Selected"}
               </Button>
             </div>
           </DialogContent>

@@ -1,25 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@hubspot/api-client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getUserHubSpotClient } from "@/lib/hubspot";
 
-// Initialize HubSpot client
-const getHubSpotClient = () => {
-  const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
-  if (!accessToken) {
-    throw new Error("HUBSPOT_ACCESS_TOKEN environment variable is required");
+// Initialize HubSpot client for authenticated user
+const getHubSpotClientForUser = async (): Promise<Client> => {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || session.user.id === "0") {
+    throw new Error("Unauthorized");
   }
-  return new Client({ accessToken });
+  return getUserHubSpotClient(Number(session.user.id));
 };
 
 // Test HubSpot connection
 export async function GET() {
   try {
-    const client = getHubSpotClient();
-    // Try to fetch a single contact as a connection test
-    const contacts = await client.crm.contacts.basicApi.getPage(1);
+    const client = await getHubSpotClientForUser();
+    // Fetch companies page as a connection test (matches app scopes)
+    const companies = await client.crm.companies.basicApi.getPage(1);
     return NextResponse.json({
       connected: true,
       message: "HubSpot connection successful",
-      contacts: contacts.results,
+      companies: companies.results,
     });
   } catch (error) {
     console.error("HubSpot connection error:", error);
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, data } = body;
 
-    const client = getHubSpotClient();
+    const client = await getHubSpotClientForUser();
 
     switch (action) {
       case "create_contact":
@@ -73,14 +76,7 @@ export async function POST(request: NextRequest) {
 async function createContact(client: Client, data: any) {
   const { email, firstname, lastname, company, phone, jobtitle } = data;
 
-  const properties = {
-    email,
-    firstname,
-    lastname,
-    company,
-    phone,
-    jobtitle,
-  };
+  const properties = { email, firstname, lastname, company, phone, jobtitle };
 
   const contact = await client.crm.contacts.basicApi.create({ properties });
 
@@ -104,29 +100,11 @@ async function updateContact(client: Client, data: any) {
 }
 
 async function createDeal(client: Client, data: any) {
-  const {
-    dealname,
-    amount,
-    dealstage,
-    pipeline,
-    closedate,
-    contactId,
-    companyId,
-  } = data;
+  const { dealname, amount, dealstage, pipeline, closedate } = data;
 
-  const properties = {
-    dealname,
-    amount,
-    dealstage,
-    pipeline,
-    closedate,
-  };
+  const properties = { dealname, amount, dealstage, pipeline, closedate };
 
   const deal = await client.crm.deals.basicApi.create({ properties });
-
-  // Associate with contact if provided (skipped - associations API differs in this SDK version)
-
-  // Associate with company if provided (skipped - associations API differs in this SDK version)
 
   return NextResponse.json({
     success: true,

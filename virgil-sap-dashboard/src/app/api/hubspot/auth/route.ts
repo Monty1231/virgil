@@ -13,10 +13,19 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get("action");
 
     if (action === "authorize") {
-      // Redirect to HubSpot OAuth authorization URL
+      // Scopes configurable via env; default to minimal read-only to avoid mismatch
+      const configuredScopes = (
+        process.env.HUBSPOT_OAUTH_SCOPES ||
+        "crm.objects.contacts.read crm.objects.companies.read"
+      )
+        .split(/[,\s]+/)
+        .filter(Boolean);
+
+      const scopes = encodeURIComponent(configuredScopes.join(" "));
+
       const authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${HUBSPOT_CLIENT_ID}&redirect_uri=${encodeURIComponent(
         HUBSPOT_REDIRECT_URI
-      )}&scope=crm.objects.companies.read%20crm.objects.companies.write%20crm.objects.deals.read%20crm.objects.deals.write%20oauth`;
+      )}&scope=${scopes}`;
 
       return NextResponse.redirect(authUrl);
     }
