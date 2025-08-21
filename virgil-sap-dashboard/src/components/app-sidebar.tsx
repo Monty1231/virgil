@@ -11,6 +11,7 @@ import {
   Bot,
   Users,
   LogOut,
+  PieChart,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -54,6 +55,11 @@ const menuItems = [
     title: "Pipeline",
     url: "/pipeline",
     icon: Kanban,
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: PieChart,
   },
   {
     title: "Commission Submission",
