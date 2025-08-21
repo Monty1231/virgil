@@ -42,3 +42,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# local uploads and generated assets
+/uploads
+
+# python backend local env/artifacts
+/pipeline-export-backend/.venv
+/pipeline-export-backend/__pycache__/
+/pipeline-export-backend/*.pyc

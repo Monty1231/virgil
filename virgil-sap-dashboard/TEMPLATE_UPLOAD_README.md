@@ -188,13 +188,18 @@ Template state is managed in the React component:
 
 ## Testing
 
-Use the provided test page (`test-template-upload.html`) to verify template upload functionality:
+Use the in-app Decks page upload UI to verify template uploads and management:
 
-1. Open the test page in a browser
-2. Upload a .pptx file
-3. Verify the template appears in the list
-4. Test template deletion
-5. Verify the template is removed from the list
+1. Open the Decks page and upload a .pptx file
+2. Confirm it appears in the Available Templates list
+3. Delete a template and verify it disappears
+
+Alternatively, you can call the Next.js API proxy to the Python backend:
+
+- List: GET /api/export/powerpoint/python-template?action=list
+- Info: GET /api/export/powerpoint/python-template?action=info&id={templateId}
+- Upload (multipart/form-data with "template"): POST /api/export/powerpoint/python-template
+- Delete: DELETE /api/export/powerpoint/python-template?id={templateId}
 
 ## Troubleshooting
 
