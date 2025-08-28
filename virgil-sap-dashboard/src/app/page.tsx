@@ -54,7 +54,7 @@ export default async function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <header className="bg-white shadow-lg border-b border-gray-100">
-        <div className="flex justify-between items-center py-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
             <FloatingLogo>
               <img src="/darkLogo.png" alt="Virgil" className="h-12 w-auto" />
@@ -72,7 +72,7 @@ export default async function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center relative">
           <TypewriterHeading
             text="Transform Your SAP Sales Process"
@@ -94,7 +94,7 @@ export default async function HomePage() {
         </div>
 
         {/* Features Section */}
-        <div className="mt-32">
+        <div className="mt-24">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
               Powerful Features for Modern Sales Teams
@@ -103,7 +103,7 @@ export default async function HomePage() {
               Everything you need to close more deals and grow your pipeline
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {/* Feature 1 */}
             <FloatingCard delay={0.1}>
               <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 hover:border-blue-200 transition-colors">
@@ -191,7 +191,7 @@ export default async function HomePage() {
         </div>
 
         {/* How It Works Section */}
-        <div className="mt-32">
+        <div className="mt-24">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
               How It Works
@@ -200,7 +200,7 @@ export default async function HomePage() {
               Get started in minutes with our simple three-step process
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {/* Step 1 */}
             <FloatingCard delay={0.1}>
               <div className="text-center">
@@ -252,7 +252,7 @@ export default async function HomePage() {
         </div>
 
         {/* Pricing Section */}
-        <div className="mt-32">
+        <div className="mt-24">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
               Simple, Transparent Pricing
@@ -261,7 +261,7 @@ export default async function HomePage() {
               Choose the plan that fits your team size and needs
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {/* Tier 1 */}
             <FloatingCard delay={0.1}>
               <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
@@ -572,9 +572,9 @@ export default async function HomePage() {
         </div>
 
         {/* Contact Section */}
-        <div className="mt-32">
-          <div className="bg-gradient-to-r from-navy-50 to-blue-50 rounded-2xl py-16 px-8">
-            <div className="text-center mb-12">
+        <div className="mt-24">
+          <div className="bg-gradient-to-r from-navy-50 to-blue-50 rounded-2xl py-12 px-6">
+            <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
                 Ready to Get Started?
               </h2>
@@ -582,7 +582,7 @@ export default async function HomePage() {
                 Have questions? Our team is here to help you succeed.
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div className="text-center">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg
@@ -651,7 +651,7 @@ export default async function HomePage() {
         </div>
 
         {/* CTA Section */}
-        <div className="mt-32 text-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl py-16 px-8">
+        <div className="mt-24 text-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl py-12 px-6">
           <StaggeredText
             text="Ready to Transform Your Sales Process?"
             className="text-3xl font-bold text-gray-900 mb-6 sm:text-4xl"
@@ -671,8 +671,8 @@ export default async function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-navy-900 mt-32">
-        <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <footer className="bg-navy-900 mt-20">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-navy-100">Virgil</h2>
