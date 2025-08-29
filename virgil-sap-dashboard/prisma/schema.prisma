@@ -102,7 +102,7 @@ model commission_rates {
   created_at      DateTime? @default(now()) @db.Timestamp(6)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations. 
 model commission_submissions {
   id                                               Int       @id @default(autoincrement())
   deal_id                                          Int?
@@ -167,7 +167,7 @@ model companies {
   @@index([company_size], map: "idx_companies_size")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations
 model company_files {
   id                Int        @id @default(autoincrement())
   company_id        Int?
@@ -189,7 +189,7 @@ model company_files {
   @@index([s3_key], map: "idx_company_files_s3_key")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations. 
 model deal_products {
   id                     Int       @id @default(autoincrement())
   deal_id                Int?
@@ -206,7 +206,7 @@ model deal_products {
   @@unique([deal_id, product_id])
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations. 
 model deals {
   id                               Int                      @id @default(autoincrement())
   company_id                       Int?
@@ -243,7 +243,7 @@ model deals {
   @@index([deal_value], map: "idx_deals_value")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations.
 model documents {
   id                    Int        @id @default(autoincrement())
   deal_id               Int?
@@ -291,7 +291,7 @@ model presentation_decks {
   users          users?     @relation(fields: [generated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations. 
 model sales_metrics {
   id                   Int       @id @default(autoincrement())
   user_id              Int?
@@ -322,7 +322,7 @@ model sap_products {
   created_at        DateTime? @default(now()) @db.Timestamp(6)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations. 
 model users {
   id                                                                Int                      @id @default(autoincrement())
   email                                                             String                   @unique @db.VarChar(255)
