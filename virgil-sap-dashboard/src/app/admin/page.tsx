@@ -46,6 +46,12 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // Invite UI state
+  const [inviteInput, setInviteInput] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     // Check if user is admin
     if (session?.user && !session.user.isAdmin) {
@@ -99,6 +105,40 @@ export default function AdminPage() {
     }
   };
 
+  const sendInvites = async () => {
+    setInviteLoading(true);
+    setInviteError("");
+    setInviteSuccess(null);
+    try {
+      const emails = inviteInput
+        .split(/[\n,;\s]+/)
+        .map((e) => e.trim())
+        .filter(Boolean);
+      if (emails.length === 0) {
+        setInviteError("Please enter at least one email.");
+        setInviteLoading(false);
+        return;
+      }
+      const res = await fetch("/api/admin/invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setInviteError(data?.error || "Failed to send invites.");
+      } else {
+        const count = data?.invites?.length || 0;
+        setInviteSuccess(`Sent ${count} invite${count === 1 ? "" : "s"}. Seats remaining: ${data?.seatsRemaining ?? "n/a"}`);
+        setInviteInput("");
+      }
+    } catch (e) {
+      setInviteError("Network error. Please try again.");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -146,6 +186,38 @@ export default function AdminPage() {
           </span>
         </div>
       </div>
+
+      {/* Invite Users */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Invite Users</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-600">
+            Enter one or more email addresses (comma, space, or newline separated).
+          </p>
+          <Input
+            placeholder="jane@company.com, john@company.com"
+            value={inviteInput}
+            onChange={(e) => setInviteInput(e.target.value)}
+          />
+          <div className="flex items-center space-x-2">
+            <Button onClick={sendInvites} disabled={inviteLoading}>
+              {inviteLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Send Invites"
+              )}
+            </Button>
+            {inviteError && (
+              <span className="text-sm text-red-600">{inviteError}</span>
+            )}
+            {inviteSuccess && (
+              <span className="text-sm text-green-700">{inviteSuccess}</span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex space-x-4">
         <Input

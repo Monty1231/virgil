@@ -10,6 +10,7 @@ declare module "next-auth" {
       isActive: boolean;
       isAdmin: boolean;
       subscriptionTier: string;
+      organizationId?: number | null;
     };
   }
 
@@ -21,6 +22,7 @@ declare module "next-auth" {
     isActive: boolean;
     isAdmin: boolean;
     subscriptionTier?: string;
+    organizationId?: number | null;
   }
 }
 
@@ -30,5 +32,6 @@ declare module "next-auth/jwt" {
     isActive?: boolean;
     isAdmin?: boolean;
     subscriptionTier?: string;
+    organizationId?: number | null;
   }
 }

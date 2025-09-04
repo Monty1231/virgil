@@ -19,34 +19,9 @@ export default async function HomePage() {
     redirect("/dashboard");
   }
 
-  // If user is authenticated but not active, show pending message
+  // If user is authenticated but not active, redirect to pricing
   if (session?.user && !session.user.isActive) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="max-w-md w-full mx-auto p-8">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Access Request Submitted
-              </h1>
-              <p className="text-gray-600">
-                Thank you for your interest in Virgil.io! Your access request
-                has been submitted and is currently under review.
-              </p>
-            </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-800">
-                You will receive an email notification once your access has been
-                approved.
-              </p>
-            </div>
-            <div className="text-sm text-gray-500">
-              <p>Signed in as: {session.user.email}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    redirect("/pricing");
   }
 
   // Landing page for unauthenticated users
@@ -85,7 +60,7 @@ export default async function HomePage() {
           />
           <div className="mt-8 max-w-md mx-auto sm:flex sm:justify-center md:mt-12">
             <AnimatedButton
-              href="/auth/signin"
+              href="/checkout/tier2"
               className="w-full flex items-center justify-center px-8 py-4 border border-transparent text-lg font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 md:py-5 md:text-xl md:px-12 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               <span>Get Started</span>
@@ -319,7 +294,7 @@ export default async function HomePage() {
                   </li>
                 </ul>
                 <AnimatedButton
-                  href="/auth/signin"
+                  href="/checkout/tier1"
                   className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Get Started</span>
@@ -403,7 +378,7 @@ export default async function HomePage() {
                   </li>
                 </ul>
                 <AnimatedButton
-                  href="/auth/signin"
+                  href="/checkout/tier2"
                   className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Get Started</span>
@@ -482,7 +457,7 @@ export default async function HomePage() {
                   </li>
                 </ul>
                 <AnimatedButton
-                  href="/auth/signin"
+                  href="/pricing"
                   className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Get Started</span>
@@ -561,7 +536,7 @@ export default async function HomePage() {
                   </li>
                 </ul>
                 <AnimatedButton
-                  href="/auth/signin"
+                  href="/checkout/tier4"
                   className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 transition-all duration-200"
                 >
                   <span>Contact Sales</span>
@@ -662,7 +637,7 @@ export default async function HomePage() {
             delay={0.5}
           />
           <AnimatedButton
-            href="/auth/signin"
+            href="/checkout/tier2"
             className="inline-flex items-center px-10 py-4 border border-transparent text-lg font-semibold rounded-lg text-white bg-blue-800 hover:bg-blue-900 md:py-5 md:text-xl md:px-12 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             <span>Sign In Now</span>

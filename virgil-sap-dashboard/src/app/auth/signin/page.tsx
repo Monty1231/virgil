@@ -22,7 +22,7 @@ export default function SignIn() {
         if (session.user.isActive) {
           router.push("/");
         } else {
-          setIsPending(true);
+          router.push("/pricing");
         }
       }
     });

@@ -16,7 +16,7 @@ export default withAuth(
 
     // If user is authenticated but not active and trying to access protected route
     if (isAuth && !isActive && !isAuthPage && !isRootPage) {
-      return NextResponse.redirect(new URL("/auth/signin", req.url));
+      return NextResponse.redirect(new URL("/request-access", req.url));
     }
 
     // If user is authenticated and active but trying to access auth pages
@@ -53,11 +53,13 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - api/auth (auth API routes)
+     * - api/checkout (Stripe checkout APIs)
+     * - checkout (server redirect to Stripe)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (public folder)
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|darkLogo.png|Virgil_blue.svg|vercel.svg|globe.svg|window.svg|next.svg|file.svg).*)",
+    "/((?!api/auth|api/checkout|checkout|_next/static|_next/image|favicon.ico|darkLogo.png|Virgil_blue.svg|vercel.svg|globe.svg|window.svg|next.svg|file.svg|pricing).*)",
   ],
 };

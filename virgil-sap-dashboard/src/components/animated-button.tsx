@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 
 interface AnimatedButtonProps {
-  href: string;
+  href?: string;
   children: React.ReactNode;
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
@@ -16,7 +16,7 @@ export const AnimatedButton = ({
   className = "",
   onClick,
 }: AnimatedButtonProps) => {
-  return (
+  const content = (
     <motion.div
       className={className}
       whileHover={{ scale: 1.02 }}
@@ -34,13 +34,25 @@ export const AnimatedButton = ({
         ease: "easeInOut",
       }}
     >
-      <Link
-        href={href}
-        className="flex items-center justify-center w-full h-full"
-        onClick={onClick}
-      >
-        {children}
-      </Link>
+      {href ? (
+        <Link
+          href={href}
+          className="flex items-center justify-center w-full h-full"
+          onClick={onClick}
+        >
+          {children}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className="flex items-center justify-center w-full h-full"
+          onClick={onClick}
+        >
+          {children}
+        </button>
+      )}
     </motion.div>
   );
+
+  return content;
 };

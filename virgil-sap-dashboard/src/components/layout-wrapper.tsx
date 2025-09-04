@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { usePathname } from "next/navigation";
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
@@ -10,6 +11,11 @@ interface LayoutWrapperProps {
 
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
+
+  // Hide sidebar on pricing and auth routes
+  const isPublicPage =
+    pathname?.startsWith("/pricing") || pathname?.startsWith("/auth");
 
   // Show loading state while checking authentication
   if (status === "loading") {
@@ -21,6 +27,11 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
         </div>
       </div>
     );
+  }
+
+  // Always render public pages without sidebar
+  if (isPublicPage) {
+    return <>{children}</>;
   }
 
   // If user is authenticated and active, show the full app with sidebar

@@ -322,6 +322,35 @@ model sap_products {
   created_at        DateTime? @default(now()) @db.Timestamp(6)
 }
 
+// New multi-tenant models
+model organizations {
+  id          Int       @id @default(autoincrement())
+  name        String?   @db.VarChar(255)
+  tier        String    @db.VarChar(50)
+  seat_limit  Int
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+  users       users[]
+  invites     org_invites[]
+}
+
+model org_invites {
+  id            Int       @id @default(autoincrement())
+  organizationId Int
+  email         String    @db.VarChar(255)
+  token         String    @unique @db.VarChar(255)
+  status        String    @default("pending") @db.VarChar(20)
+  invited_by    Int?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  expires_at    DateTime?
+
+  organizations organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@unique([organizationId, email])
+}
+
 /// This table contains check constraints and requires additional setup for migrations. 
 model users {
   id                                                                Int                      @id @default(autoincrement())
@@ -342,6 +371,8 @@ model users {
   accessGrantedBy                                                   String?
   subscriptionTier                                                  String?                  @default("basic")
   subscriptionExpiresAt                                             DateTime?
+  organizationId                                                    Int?
+  organizations                                                     organizations?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   
   // NextAuth.js relations
   accounts                                                          Account[]
@@ -360,4 +391,6 @@ model users {
   pipeline_forecasts                                                pipeline_forecasts[]
   presentation_decks                                                presentation_decks[]
   sales_metrics                                                     sales_metrics[]
+
+  @@index([organizationId])
 }

@@ -12,7 +12,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId = (session.user as any).organizationId as
+      | number
+      | null
+      | undefined;
+    if (!orgId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const users = await prisma.users.findMany({
+      where: { organizationId: orgId },
       orderBy: {
         created_at: "desc",
       },
