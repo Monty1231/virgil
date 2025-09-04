@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions as any);
-    if (!session?.user?.email) {
+    const session = (await getServerSession(authOptions as any)) as any;
+    const userEmail = session?.user?.email as string | undefined;
+    if (!userEmail) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -17,17 +18,25 @@ export async function POST(request: Request) {
     }
 
     const updated = await prisma.users.update({
-      where: { email: session.user.email },
+      where: { email: userEmail },
       data: {
         subscriptionTier: plan,
         subscriptionExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
       },
-      select: { id: true, email: true, subscriptionTier: true, subscriptionExpiresAt: true },
+      select: {
+        id: true,
+        email: true,
+        subscriptionTier: true,
+        subscriptionExpiresAt: true,
+      },
     });
 
     return NextResponse.json({ success: true, user: updated });
   } catch (err) {
     console.error("Failed to update subscription:", err);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
-} 
+}

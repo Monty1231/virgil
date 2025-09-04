@@ -11,8 +11,9 @@ export async function GET(
     if (!plan) return NextResponse.redirect(new URL("/pricing", req.url));
 
     // Ensure user session (redirect to sign-in and back if missing)
-    const session = await getServerSession(authOptions as any);
-    if (!session?.user?.email) {
+    const session = (await getServerSession(authOptions as any)) as any;
+    const userEmail = session?.user?.email as string | undefined;
+    if (!userEmail) {
       const url = new URL(`/auth/signin`, req.url);
       url.searchParams.set("callbackUrl", `/checkout/${plan}`);
       return NextResponse.redirect(url);

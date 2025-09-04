@@ -6,12 +6,13 @@ import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions as any);
-    if (!session?.user?.email)
+    const session = (await getServerSession(authOptions as any)) as any;
+    const userEmail = session?.user?.email as string | undefined;
+    if (!userEmail)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const admin = await prisma.users.findUnique({
-      where: { email: session.user.email },
+      where: { email: userEmail },
     });
     if (!admin || !admin.isAdmin || !admin.organizationId)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
