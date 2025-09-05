@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 // Floating animation for the logo
 export const FloatingLogo = ({ children }: { children: React.ReactNode }) => {
@@ -233,8 +233,66 @@ export const MorphingShape = () => {
         ease: "easeInOut",
       }}
       style={{
-        background: "linear-gradient(45deg, #3b82f6, #8b5cf6)",
+        background: "linear-gradient(45deg, #0b1535, #1e3a8a)",
       }}
     />
+  );
+};
+
+// Aurora gradient backdrop with subtle noise
+export const AuroraBackground = () => {
+  return (
+    <div className="absolute inset-0 -z-20 overflow-hidden">
+      <div className="pointer-events-none absolute -inset-[20%] bg-[conic-gradient(at_10%_50%,#0b1535_10%,#1e3a8a_30%,#4f46e5_50%,#0ea5e9_70%,#0b1535_90%)] opacity-30 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1000px_400px_at_80%_-100px,rgba(14,165,233,0.25),transparent),radial-gradient(800px_300px_at_20%_-50px,rgba(79,70,229,0.2),transparent)]" />
+    </div>
+  );
+};
+
+// 3D tilt card
+export const TiltCard = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const rotateX = useTransform(y, [-0.5, 0.5], [10, -10]);
+  const rotateY = useTransform(x, [-0.5, 0.5], [-10, 10]);
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    x.set(px);
+    y.set(py);
+  };
+
+  const onMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      style={{ perspective: 1000 }}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+    >
+      <motion.div
+        style={{ rotateX, rotateY }}
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        className="will-change-transform"
+      >
+        {children}
+      </motion.div>
+    </motion.div>
   );
 };
