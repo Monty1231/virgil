@@ -15,6 +15,23 @@ export async function GET() {
 
     console.log("Fetching deals from database...");
 
+    // Optional filter by companyId from query string
+    // Note: Next.js route handler without request arg; read from headers
+    // If you want stronger typing, switch signature to (request: Request)
+    let companyId: number | null = null;
+    try {
+      const url = new URL((globalThis as any).request?.url || "http://localhost");
+      const c = url.searchParams.get("companyId");
+      if (c) companyId = Number(c);
+    } catch {}
+
+    const params: any[] = [session.user.id];
+    let where = "WHERE d.ae_assigned = $1";
+    if (companyId) {
+      params.push(companyId);
+      where += " AND d.company_id = $2";
+    }
+
     const deals = await sql.query(
       `
       SELECT 
@@ -25,15 +42,16 @@ export async function GET() {
         d.notes,
         d.last_activity,
         d.expected_close_date,
+        d.company_id,
         c.name as company_name,
         u.name as ae_name
       FROM deals d
       LEFT JOIN companies c ON d.company_id = c.id
       LEFT JOIN users u ON d.ae_assigned = u.id
-      WHERE d.ae_assigned = $1
+      ${where}
       ORDER BY d.last_activity DESC
     `,
-      [session.user.id]
+      params
     );
 
     console.log("Database query result:", deals);

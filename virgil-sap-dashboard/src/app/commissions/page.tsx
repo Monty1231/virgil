@@ -214,6 +214,21 @@ export default function Commissions() {
     fetchSubmissions();
   }, []);
 
+  // Helper to refetch submissions on-demand after actions
+  const refetchSubmissions = async () => {
+    setLoadingSubmissions(true);
+    try {
+      const res = await fetch("/api/commissions");
+      if (!res.ok) throw new Error("Failed to fetch submissions");
+      const data = await res.json();
+      setSubmissions(data);
+    } catch (err) {
+      setSubmissions([]);
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -262,6 +277,8 @@ export default function Commissions() {
         commissionRate: "5",
         notes: "",
       });
+      // Refresh the submission history so the new entry appears
+      await refetchSubmissions();
     } catch (err) {
       alert("Failed to submit commission. Please try again.");
     }
@@ -299,6 +316,8 @@ export default function Commissions() {
         commissionRate: "5",
         notes: "",
       });
+      // Refresh history
+      await refetchSubmissions();
     } catch (err) {
       alert("Failed to save draft. Please try again.");
     }
