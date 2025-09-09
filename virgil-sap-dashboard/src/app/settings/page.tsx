@@ -16,6 +16,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { User, Bell, Shield, Database, Save } from "lucide-react";
 import { HubSpotIntegration } from "@/components/hubspot-integration";
+import { SalesforceIntegration } from "@/components/salesforce-integration";
 
 export default function Settings() {
   return (
@@ -205,6 +206,7 @@ export default function Settings() {
 
         {/* HubSpot Integration */}
         <HubSpotIntegration />
+        <SalesforceIntegration />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
