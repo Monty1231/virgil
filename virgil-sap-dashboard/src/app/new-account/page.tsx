@@ -1,6 +1,10 @@
 "use client";
 
-import React, { ReactElement, useState } from "react";
+import React, {
+  ReactElement,
+  useEffect as useEffectReact,
+  useState,
+} from "react";
 import { Image as ImageIcon } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +24,12 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Bot,
   Building2,
@@ -43,8 +53,12 @@ import {
   Paperclip,
   Download,
   Trash2,
+  Headphones,
+  Play,
+  Pencil,
+  RotateCw,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const industries = [
   "Manufacturing",
@@ -131,6 +145,7 @@ const fileTypes = [
   },
   { value: "financial", label: "Financial Information", icon: DollarSign },
   { value: "presentation", label: "Company Presentation", icon: ImageIcon },
+  { value: "audio", label: "Audio Recordings", icon: Headphones },
   { value: "other", label: "Other", icon: Paperclip },
 ];
 
@@ -165,6 +180,8 @@ interface UploadedFile {
 
 export default function NewAccount(): ReactElement {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEmbedded = (searchParams.get("embed") || "") === "1";
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     // Basic Company Info
@@ -207,6 +224,7 @@ export default function NewAccount(): ReactElement {
     useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isRagProcessing, setIsRagProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -216,6 +234,144 @@ export default function NewAccount(): ReactElement {
   >({});
   const [newTag, setNewTag] = useState("");
   const saveClickedRef = React.useRef(false);
+  const companiesSectionRef = React.useRef<HTMLDivElement>(null);
+
+  // Inline Companies list state (native remake, no iframe)
+  interface InlineCompany {
+    id: number;
+    name: string;
+    industry?: string;
+    company_size?: string;
+    region?: string;
+    website?: string;
+  }
+  const [inlineCompanies, setInlineCompanies] = useState<InlineCompany[]>([]);
+  const [inlineFilter, setInlineFilter] = useState("");
+  const [inlineLoading, setInlineLoading] = useState(false);
+  const [inlineError, setInlineError] = useState<string | null>(null);
+  const [inlineEditing, setInlineEditing] = useState<any | null>(null);
+  const [inlineSubmitting, setInlineSubmitting] = useState(false);
+  const [inlineDeletingId, setInlineDeletingId] = useState<number | null>(null);
+
+  // HubSpot import state
+  const [importOpen, setImportOpen] = useState(false);
+  const [hsCompanies, setHsCompanies] = useState<any[]>([]);
+  const [hsLoading, setHsLoading] = useState(false);
+  const [hsSelected, setHsSelected] = useState<string[]>([]);
+  const [hsImporting, setHsImporting] = useState(false);
+  const [hsError, setHsError] = useState<string | null>(null);
+
+  const loadInlineCompanies = async () => {
+    setInlineLoading(true);
+    setInlineError(null);
+    try {
+      const res = await fetch("/api/companies", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to fetch companies");
+      setInlineCompanies(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      setInlineError(e.message || "Failed to fetch companies");
+      setInlineCompanies([]);
+    } finally {
+      setInlineLoading(false);
+    }
+  };
+
+  useEffectReact(() => {
+    if (!isEmbedded) loadInlineCompanies();
+  }, [isEmbedded]);
+
+  const startInlineEdit = async (id: number) => {
+    try {
+      const res = await fetch(`/api/companies/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to fetch company");
+      setInlineEditing(data);
+    } catch (e: any) {
+      setInlineError(e.message);
+    }
+  };
+
+  const submitInlineEdit = async () => {
+    if (!inlineEditing) return;
+    setInlineSubmitting(true);
+    try {
+      const res = await fetch(`/api/companies/${inlineEditing.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(inlineEditing),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to update company");
+      setInlineEditing(null);
+      await loadInlineCompanies();
+    } catch (e: any) {
+      setInlineError(e.message);
+    } finally {
+      setInlineSubmitting(false);
+    }
+  };
+
+  const confirmInlineDelete = async (id: number) => {
+    if (
+      !confirm("Delete this company and related data? This cannot be undone.")
+    )
+      return;
+    setInlineDeletingId(id);
+    try {
+      const res = await fetch(`/api/companies/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to delete company");
+      await loadInlineCompanies();
+    } catch (e: any) {
+      setInlineError(e.message);
+    } finally {
+      setInlineDeletingId(null);
+    }
+  };
+
+  const loadHsCompanies = async () => {
+    setHsLoading(true);
+    setHsError(null);
+    try {
+      const res = await fetch("/api/hubspot/sync", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to load HubSpot companies");
+      setHsCompanies(Array.isArray(data.companies) ? data.companies : []);
+    } catch (e: any) {
+      setHsError(e.message || "Failed to load HubSpot companies");
+      setHsCompanies([]);
+    } finally {
+      setHsLoading(false);
+    }
+  };
+
+  const importHsSelected = async () => {
+    if (hsSelected.length === 0) return;
+    setHsImporting(true);
+    setHsError(null);
+    try {
+      const res = await fetch("/api/hubspot/import/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hubspotCompanyIds: hsSelected }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Import failed");
+      setImportOpen(false);
+      setHsSelected([]);
+      await loadInlineCompanies();
+      companiesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e: any) {
+      setHsError(e.message || "Import failed");
+    } finally {
+      setHsImporting(false);
+    }
+  };
+
+  const toggleHsSelection = (id: string, checked: boolean) => {
+    setHsSelected((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
+  };
 
   const steps = [
     {
@@ -559,29 +715,66 @@ export default function NewAccount(): ReactElement {
 
       const newCompany = await response.json();
       setCreatedCompanyId(newCompany.id);
-      setSuccess(`Successfully created account for ${formData.companyName}!`);
 
-      // Reset form
-      setFormData({
-        companyName: "",
-        industry: "",
-        size: "",
-        region: "",
-        website: "",
-        challenges: "",
-        currentSystems: "",
-        budget: "",
-        timeline: "",
-        priority: "",
-        primaryContact: { name: "", title: "", email: "", phone: "" },
-        secondaryContact: { name: "", title: "", email: "", phone: "" },
-        notes: "",
-        tags: [],
-      });
-      setUploadedFiles([]);
-      setSuggestedModules([]);
-      setAnalysisResult("");
-      setCurrentStep(0);
+      if (isEmbedded) {
+        // Notify parent to refresh companies and close embed
+        try {
+          window.parent?.postMessage(
+            { type: "companyCreated", companyId: newCompany.id },
+            "*"
+          );
+        } catch {}
+        // Optionally reset form fields
+        setFormData({
+          companyName: "",
+          industry: "",
+          size: "",
+          region: "",
+          website: "",
+          challenges: "",
+          currentSystems: "",
+          budget: "",
+          timeline: "",
+          priority: "",
+          primaryContact: { name: "", title: "", email: "", phone: "" },
+          secondaryContact: { name: "", title: "", email: "", phone: "" },
+          notes: "",
+          tags: [],
+        });
+        setUploadedFiles([]);
+        setSuggestedModules([]);
+        setAnalysisResult("");
+        setCurrentStep(0);
+        return;
+      } else {
+        // Show list below and reset form
+        setFormData({
+          companyName: "",
+          industry: "",
+          size: "",
+          region: "",
+          website: "",
+          challenges: "",
+          currentSystems: "",
+          budget: "",
+          timeline: "",
+          priority: "",
+          primaryContact: { name: "", title: "", email: "", phone: "" },
+          secondaryContact: { name: "", title: "", email: "", phone: "" },
+          notes: "",
+          tags: [],
+        });
+        setUploadedFiles([]);
+        setSuggestedModules([]);
+        setAnalysisResult("");
+        setCurrentStep(0);
+        await loadInlineCompanies();
+        companiesSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        return;
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred"
@@ -655,24 +848,42 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
 
   return (
     <div className="flex-1 space-y-6 p-6">
-      <div className="flex items-center gap-4">
-        <SidebarTrigger />
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900">
-            New Account Intake
-          </h1>
-          <p className="text-gray-600">
-            Comprehensive prospect information capture with document upload
-          </p>
-        </div>
-        <div className="text-right">
-          <div className="text-sm text-gray-500 mb-1">Form Progress</div>
-          <div className="flex items-center gap-2">
-            <Progress value={calculateProgress()} className="w-24" />
-            <span className="text-sm font-medium">{calculateProgress()}%</span>
+      {!isEmbedded && (
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-gray-900">
+              New Account Intake
+            </h1>
+            <p className="text-gray-600">
+              Comprehensive prospect information capture with document upload
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {!isEmbedded && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setImportOpen(true);
+                  if (hsCompanies.length === 0) void loadHsCompanies();
+                }}
+              >
+                Import from HubSpot
+              </Button>
+            )}
+            <div className="text-right">
+              <div className="text-sm text-gray-500 mb-1">Form Progress</div>
+              <div className="flex items-center gap-2">
+                <Progress value={calculateProgress()} className="w-24" />
+                <span className="text-sm font-medium">
+                  {calculateProgress()}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Error/Success Messages */}
       {error && (
@@ -687,13 +898,28 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
             {success}
+            <div className="mt-2 text-sm text-green-700">
+              {isRagProcessing && (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                  <span>
+                    Processing company data for AI analysis (this happens in the
+                    background)...
+                  </span>
+                </div>
+              )}
+            </div>
           </AlertDescription>
         </Alert>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div
+        className={`grid gap-6 ${
+          isEmbedded ? "lg:grid-cols-1" : "lg:grid-cols-3"
+        }`}
+      >
         {/* Main Form */}
-        <div className="lg:col-span-2">
+        <div className={isEmbedded ? "lg:col-span-1" : "lg:col-span-2"}>
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -703,22 +929,26 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                   })}
                   {steps[currentStep].title}
                 </CardTitle>
-                <div className="text-sm text-gray-500">
-                  Step {currentStep + 1} of {steps.length}
-                </div>
+                {!isEmbedded && (
+                  <div className="text-sm text-gray-500">
+                    Step {currentStep + 1} of {steps.length}
+                  </div>
+                )}
               </div>
 
               {/* Step Progress */}
-              <div className="flex gap-2 mt-4">
-                {steps.map((step, index) => (
-                  <div
-                    key={index}
-                    className={`flex-1 h-2 rounded-full ${
-                      index <= currentStep ? "bg-blue-600" : "bg-gray-200"
-                    }`}
-                  />
-                ))}
-              </div>
+              {!isEmbedded && (
+                <div className="flex gap-2 mt-4">
+                  {steps.map((step, index) => (
+                    <div
+                      key={index}
+                      className={`flex-1 h-2 rounded-full ${
+                        index <= currentStep ? "bg-blue-600" : "bg-gray-200"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </CardHeader>
 
             <CardContent>
@@ -1186,7 +1416,11 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                             <Input
                               type="file"
                               multiple
-                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
+                              accept={
+                                fileType.value === "audio"
+                                  ? ".mp3,.wav,.ogg,.webm,.m4a,.aac,.flac"
+                                  : ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
+                              }
                               onChange={(e) =>
                                 handleFileUpload(e, fileType.value)
                               }
@@ -1220,6 +1454,8 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                                     <Loader2 className="h-4 w-4 text-blue-500 flex-shrink-0 animate-spin" />
                                   ) : file.status === "error" ? (
                                     <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                  ) : file.type.startsWith("audio/") ? (
+                                    <Headphones className="h-4 w-4 text-gray-500 flex-shrink-0" />
                                   ) : (
                                     <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
                                   )}
@@ -1250,17 +1486,34 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                                 </div>
                                 <div className="flex items-center gap-1">
                                   {file.url && file.status === "success" && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        window.open(file.url, "_blank")
-                                      }
-                                      title="Download file"
-                                    >
-                                      <Download className="h-3 w-3" />
-                                    </Button>
+                                    <>
+                                      {file.type.startsWith("audio/") ? (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const audio = new Audio(file.url);
+                                            audio.play();
+                                          }}
+                                          title="Play audio"
+                                        >
+                                          <Play className="h-3 w-3" />
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            window.open(file.url, "_blank")
+                                          }
+                                          title="Download file"
+                                        >
+                                          <Download className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </>
                                   )}
                                   <Button
                                     type="button"
@@ -1360,6 +1613,20 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
                   </Button>
 
                   <div className="flex gap-2">
+                    {!isEmbedded && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          companiesSectionRef.current?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          })
+                        }
+                      >
+                        Cancel
+                      </Button>
+                    )}
                     {currentStep < steps.length - 1 ? (
                       <Button type="button" onClick={nextStep}>
                         Next
@@ -1393,215 +1660,805 @@ This analysis suggests strong potential for SAP solutions with a phased implemen
           </Card>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* AI-Powered SAP Module Recommendations */}
-          {(suggestedModules.length > 0 || isLoadingRecommendations) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-green-700 flex items-center gap-2">
-                  <Bot className="h-5 w-5" />
-                  AI-Powered SAP Recommendations
-                  {isLoadingRecommendations && (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingRecommendations ? (
-                  <div className="space-y-3">
-                    <div className="animate-pulse">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        {/* Sidebar: Recommendations, Summary, Companies list */}
+        {!isEmbedded && (
+          <div className="space-y-6">
+            {/* AI-Powered SAP Module Recommendations */}
+            {(suggestedModules.length > 0 || isLoadingRecommendations) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-green-700 flex items-center gap-2">
+                    <Bot className="h-5 w-5" />
+                    AI-Powered SAP Recommendations
+                    {isLoadingRecommendations && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingRecommendations ? (
+                    <div className="space-y-3">
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                      </div>
                     </div>
-                    <div className="animate-pulse">
-                      <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {suggestedModules.map((module, index) => (
-                      <div
-                        key={index}
-                        className="p-3 border border-green-200 rounded-lg bg-green-50"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge className="bg-green-100 text-green-800">
-                            {module.product_name}
-                          </Badge>
-                          {module.confidence_score && (
-                            <span className="text-xs text-green-600">
-                              {module.confidence_score}% match
-                            </span>
+                  ) : (
+                    <div className="space-y-3">
+                      {suggestedModules.map((module, index) => (
+                        <div
+                          key={index}
+                          className="p-3 border border-green-200 rounded-lg bg-green-50"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge className="bg-green-100 text-green-800">
+                              {module.product_name}
+                            </Badge>
+                            {module.confidence_score && (
+                              <span className="text-xs text-green-600">
+                                {module.confidence_score}% match
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-700 mb-2">
+                            {module.description}
+                          </p>
+                          {module.reasoning && (
+                            <p className="text-xs text-green-600 italic">
+                              AI Reasoning: {module.reasoning}
+                            </p>
                           )}
                         </div>
-                        <p className="text-sm text-gray-700 mb-2">
-                          {module.description}
-                        </p>
-                        {module.reasoning && (
-                          <p className="text-xs text-green-600 italic">
-                            AI Reasoning: {module.reasoning}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className="text-sm text-gray-600 mt-3">
-                  Powered by OpenAI • Based on:{" "}
-                  <strong>{formData.industry}</strong>
-                  {uploadedFiles.length > 0 &&
-                    ` • ${uploadedFiles.length} uploaded documents`}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-600 mt-3">
+                    Powered by OpenAI • Based on:{" "}
+                    <strong>{formData.industry}</strong>
+                    {uploadedFiles.length > 0 &&
+                      ` • ${uploadedFiles.length} uploaded documents`}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* Form Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-blue-600" />
-                Form Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm space-y-2">
-                {formData.companyName && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Company:</span>
-                    <span className="font-medium">{formData.companyName}</span>
-                  </div>
-                )}
-                {formData.industry && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Industry:</span>
-                    <span className="font-medium">{formData.industry}</span>
-                  </div>
-                )}
-                {formData.size && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Size:</span>
-                    <Badge className="text-xs">
-                      {
-                        companySizes.find((s) => s.value === formData.size)
-                          ?.label
-                      }
-                    </Badge>
-                  </div>
-                )}
-                {formData.priority && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Priority:</span>
-                    <Badge
-                      className={
-                        priorities.find((p) => p.value === formData.priority)
-                          ?.color
-                      }
-                    >
-                      {
-                        priorities.find((p) => p.value === formData.priority)
-                          ?.label
-                      }
-                    </Badge>
-                  </div>
-                )}
-                {formData.primaryContact.name && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Contact:</span>
-                    <span className="font-medium">
-                      {formData.primaryContact.name}
-                    </span>
-                  </div>
-                )}
-                {uploadedFiles.length > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Files:</span>
-                    <Badge variant="outline">
-                      {uploadedFiles.length} uploaded
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Next Steps */}
-          {createdCompanyId && (
+            {/* Form Summary */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-blue-600" />
-                  Next Steps
+                  <CheckCircle className="h-5 w-5 text-blue-600" />
+                  Form Summary
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="text-sm space-y-2">
+                  {formData.companyName && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Company:</span>
+                      <span className="font-medium">
+                        {formData.companyName}
+                      </span>
+                    </div>
+                  )}
+                  {formData.industry && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Industry:</span>
+                      <span className="font-medium">{formData.industry}</span>
+                    </div>
+                  )}
+                  {formData.size && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Size:</span>
+                      <Badge className="text-xs">
+                        {
+                          companySizes.find((s) => s.value === formData.size)
+                            ?.label
+                        }
+                      </Badge>
+                    </div>
+                  )}
+                  {formData.priority && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Priority:</span>
+                      <Badge
+                        className={
+                          priorities.find((p) => p.value === formData.priority)
+                            ?.color
+                        }
+                      >
+                        {
+                          priorities.find((p) => p.value === formData.priority)
+                            ?.label
+                        }
+                      </Badge>
+                    </div>
+                  )}
+                  {formData.primaryContact.name && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Contact:</span>
+                      <span className="font-medium">
+                        {formData.primaryContact.name}
+                      </span>
+                    </div>
+                  )}
+                  {uploadedFiles.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Files:</span>
+                      <Badge variant="outline">
+                        {uploadedFiles.length} uploaded
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Next Steps and AI Analysis Results */}
+            {createdCompanyId && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-blue-600" />
+                    Next Steps
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    onClick={handleAIAnalysis}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Bot className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Run AI Analysis
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={handleCreateDeal}
+                    variant="outline"
+                    className="w-full bg-transparent"
+                  >
+                    Create Deal Opportunity
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {analysisResult && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-blue-600" />
+                    AI Analysis Results
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <pre className="text-sm text-blue-900 whitespace-pre-wrap font-sans">
+                      {analysisResult}
+                    </pre>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={handleCreateDeal}
+                    >
+                      Create Deal
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push("/analyzer")}
+                    >
+                      View Full Analysis
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Full-width Companies list beneath the form (wider) */}
+      {!isEmbedded && (
+        <div ref={companiesSectionRef}>
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Existing Companies
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between mb-3">
+                <Input
+                  placeholder="Search companies..."
+                  value={inlineFilter}
+                  onChange={(e) => setInlineFilter(e.target.value)}
+                  className="w-64"
+                />
                 <Button
-                  onClick={handleAIAnalysis}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  disabled={isAnalyzing}
+                  variant="ghost"
+                  size="icon"
+                  onClick={loadInlineCompanies}
+                  disabled={inlineLoading}
+                  aria-label="Refresh companies"
+                  title="Refresh"
                 >
-                  {isAnalyzing ? (
-                    <>
-                      <Bot className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing...
-                    </>
+                  {inlineLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Run AI Analysis
-                    </>
+                    <RotateCw className="h-4 w-4" />
                   )}
                 </Button>
-
-                <Button
-                  onClick={handleCreateDeal}
-                  variant="outline"
-                  className="w-full bg-transparent"
-                >
-                  Create Deal Opportunity
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* AI Analysis Results */}
-          {analysisResult && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-blue-600" />
-                  AI Analysis Results
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <pre className="text-sm text-blue-900 whitespace-pre-wrap font-sans">
-                    {analysisResult}
-                  </pre>
+              </div>
+              {inlineLoading ? (
+                <div className="text-sm text-muted-foreground">Loading...</div>
+              ) : inlineError ? (
+                <div className="text-sm text-red-600">{inlineError}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground border-b">
+                        <th className="py-2 pr-3">Name</th>
+                        <th className="py-2 pr-3">Industry</th>
+                        <th className="py-2 pr-3">Size</th>
+                        <th className="py-2 pr-3">Region</th>
+                        <th className="py-2 pr-3">Website</th>
+                        <th className="py-2 pr-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inlineCompanies
+                        .filter((c) => {
+                          const q = inlineFilter.trim().toLowerCase();
+                          if (!q) return true;
+                          return [c.name, c.industry, c.company_size, c.region]
+                            .filter(Boolean)
+                            .some((v) => String(v).toLowerCase().includes(q));
+                        })
+                        .map((c) => (
+                          <tr key={c.id} className="border-b last:border-b-0">
+                            <td className="py-2 pr-3 font-medium text-foreground">
+                              {c.name}
+                            </td>
+                            <td className="py-2 pr-3">{c.industry || "-"}</td>
+                            <td className="py-2 pr-3">
+                              {c.company_size || "-"}
+                            </td>
+                            <td className="py-2 pr-3">{c.region || "-"}</td>
+                            <td className="py-2 pr-3 truncate max-w-[240px]">
+                              {c.website ? (
+                                <a
+                                  href={c.website}
+                                  className="text-primary hover:underline"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {c.website}
+                                </a>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td className="py-2 pr-3">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => startInlineEdit(c.id)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => confirmInlineDelete(c.id)}
+                                  disabled={inlineDeletingId === c.id}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={handleCreateDeal}
-                  >
-                    Create Deal
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => router.push("/analyzer")}
-                  >
-                    View Full Analysis
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      )}
+
+      {/* Inline edit dialog */}
+      {!isEmbedded && (
+        <Dialog
+          open={!!inlineEditing}
+          onOpenChange={(o) => !o && setInlineEditing(null)}
+        >
+          <DialogContent className="sm:max-w-[800px] max-h-[85vh] p-0 flex flex-col">
+            <DialogHeader className="px-6 pt-6">
+              <DialogTitle>Edit Company</DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-4 flex-1 overflow-y-auto">
+              {inlineEditing && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="iname">Name</Label>
+                      <Input
+                        id="iname"
+                        value={inlineEditing.name || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            name: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="iindustry">Industry</Label>
+                      <Input
+                        id="iindustry"
+                        value={inlineEditing.industry || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            industry: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="isize">Company Size</Label>
+                      <Input
+                        id="isize"
+                        value={inlineEditing.company_size || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            company_size: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="iregion">Region</Label>
+                      <Input
+                        id="iregion"
+                        value={inlineEditing.region || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            region: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="iwebsite">Website</Label>
+                      <Input
+                        id="iwebsite"
+                        value={inlineEditing.website || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            website: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="isystems">Current Systems</Label>
+                      <Input
+                        id="isystems"
+                        value={inlineEditing.current_systems || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            current_systems: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="ibudget">Budget</Label>
+                      <Input
+                        id="ibudget"
+                        value={inlineEditing.budget || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            budget: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="itimeline">Timeline</Label>
+                      <Input
+                        id="itimeline"
+                        value={inlineEditing.timeline || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            timeline: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="ipriority">Priority</Label>
+                      <Input
+                        id="ipriority"
+                        value={inlineEditing.priority || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            priority: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="ichallenges">Business Challenges</Label>
+                    <Input
+                      id="ichallenges"
+                      value={inlineEditing.business_challenges || ""}
+                      onChange={(e) =>
+                        setInlineEditing({
+                          ...inlineEditing,
+                          business_challenges: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="inotes">Notes</Label>
+                    <Input
+                      id="inotes"
+                      value={inlineEditing.notes || ""}
+                      onChange={(e) =>
+                        setInlineEditing({
+                          ...inlineEditing,
+                          notes: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  {/* Contacts */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Primary Contact Name</Label>
+                      <Input
+                        value={inlineEditing.primary_contact?.name || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            primary_contact: {
+                              ...(inlineEditing.primary_contact || {}),
+                              name: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Primary Contact Title</Label>
+                      <Input
+                        value={inlineEditing.primary_contact?.title || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            primary_contact: {
+                              ...(inlineEditing.primary_contact || {}),
+                              title: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Primary Contact Email</Label>
+                      <Input
+                        value={inlineEditing.primary_contact?.email || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            primary_contact: {
+                              ...(inlineEditing.primary_contact || {}),
+                              email: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Primary Contact Phone</Label>
+                      <Input
+                        value={inlineEditing.primary_contact?.phone || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            primary_contact: {
+                              ...(inlineEditing.primary_contact || {}),
+                              phone: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Secondary Contact Name</Label>
+                      <Input
+                        value={inlineEditing.secondary_contact?.name || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            secondary_contact: {
+                              ...(inlineEditing.secondary_contact || {}),
+                              name: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Secondary Contact Title</Label>
+                      <Input
+                        value={inlineEditing.secondary_contact?.title || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            secondary_contact: {
+                              ...(inlineEditing.secondary_contact || {}),
+                              title: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Secondary Contact Email</Label>
+                      <Input
+                        value={inlineEditing.secondary_contact?.email || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            secondary_contact: {
+                              ...(inlineEditing.secondary_contact || {}),
+                              email: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Secondary Contact Phone</Label>
+                      <Input
+                        value={inlineEditing.secondary_contact?.phone || ""}
+                        onChange={(e) =>
+                          setInlineEditing({
+                            ...inlineEditing,
+                            secondary_contact: {
+                              ...(inlineEditing.secondary_contact || {}),
+                              phone: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  {/* Tags */}
+                  <div>
+                    <Label htmlFor="itags">Tags (comma-separated)</Label>
+                    <Input
+                      id="itags"
+                      value={
+                        Array.isArray(inlineEditing.tags)
+                          ? inlineEditing.tags.join(", ")
+                          : inlineEditing.tags || ""
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const arr = val
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean);
+                        setInlineEditing({ ...inlineEditing, tags: arr });
+                      }}
+                    />
+                  </div>
+                  {/* Files */}
+                  {Array.isArray((inlineEditing as any).files) &&
+                    (inlineEditing as any).files.length > 0 && (
+                      <div className="mt-2">
+                        <Label>Files</Label>
+                        <div className="mt-1 border rounded p-2 max-h-48 overflow-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-muted-foreground">
+                                <th className="text-left pr-2 py-1">Name</th>
+                                <th className="text-left pr-2 py-1">Type</th>
+                                <th className="text-left pr-2 py-1">Size</th>
+                                <th className="text-left pr-2 py-1">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(inlineEditing as any).files.map((f: any) => (
+                                <tr key={f.id} className="border-t">
+                                  <td className="py-1 pr-2 truncate max-w-[220px]">
+                                    {f.original_name || f.filename}
+                                  </td>
+                                  <td className="py-1 pr-2">
+                                    {f.file_type || "-"}
+                                  </td>
+                                  <td className="py-1 pr-2">
+                                    {typeof f.file_size === "number"
+                                      ? `${(f.file_size / 1024).toFixed(1)} KB`
+                                      : "-"}
+                                  </td>
+                                  <td className="py-1 pr-2">
+                                    <div className="flex items-center gap-2">
+                                      {f.s3_key && (
+                                        <a
+                                          className="text-primary hover:underline"
+                                          href={`/api/files/${encodeURIComponent(
+                                            f.s3_key
+                                          )}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          Download
+                                        </a>
+                                      )}
+                                      {f.s3_key && (
+                                        <button
+                                          className="text-red-600 hover:underline"
+                                          onClick={async () => {
+                                            if (!confirm("Delete this file?"))
+                                              return;
+                                            const delRes = await fetch(
+                                              `/api/files/${encodeURIComponent(
+                                                f.s3_key
+                                              )}`,
+                                              { method: "DELETE" }
+                                            );
+                                            if (!delRes.ok) {
+                                              alert("Failed to delete file");
+                                              return;
+                                            }
+                                            // Refresh company to reload files
+                                            await startInlineEdit(
+                                              (inlineEditing as any).id
+                                            );
+                                          }}
+                                        >
+                                          Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
+            </div>
+            <div className="border-t bg-background px-6 py-3 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setInlineEditing(null)}
+                disabled={inlineSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button onClick={submitInlineEdit} disabled={inlineSubmitting}>
+                {inlineSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* HubSpot import dialog */}
+      {!isEmbedded && (
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogContent className="sm:max-w-[800px] max-h-[85vh] p-0 flex flex-col">
+            <DialogHeader className="px-6 pt-6">
+              <DialogTitle>Import Companies from HubSpot</DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-4 flex-1 overflow-y-auto">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm text-muted-foreground">
+                  Select companies to import into Virgil
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={loadHsCompanies} disabled={hsLoading}>
+                    {hsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                  </Button>
+                  <Button size="sm" onClick={importHsSelected} disabled={hsSelected.length === 0 || hsImporting}>
+                    {hsImporting ? "Importing..." : `Import${hsSelected.length ? ` (${hsSelected.length})` : ""}`}
+                  </Button>
+                </div>
+              </div>
+              {hsError && (
+                <Alert className="mb-3 border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{hsError}</AlertDescription>
+                </Alert>
+              )}
+              <div className="overflow-x-auto border rounded-md">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr className="text-left">
+                      <th className="py-2 px-3">Select</th>
+                      <th className="py-2 px-3">Name</th>
+                      <th className="py-2 px-3">Industry</th>
+                      <th className="py-2 px-3">Website</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hsCompanies.map((c: any) => (
+                      <tr key={c.id} className="border-t">
+                        <td className="py-2 px-3">
+                          <input
+                            type="checkbox"
+                            checked={hsSelected.includes(c.id)}
+                            onChange={(e) => toggleHsSelection(c.id, e.target.checked)}
+                          />
+                        </td>
+                        <td className="py-2 px-3 font-medium">{c.name}</td>
+                        <td className="py-2 px-3">{c.industry || "-"}</td>
+                        <td className="py-2 px-3 truncate max-w-[260px]">
+                          {c.website ? (
+                            <a href={c.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                              {c.website}
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="border-t bg-background px-6 py-3 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setImportOpen(false)} disabled={hsImporting}>
+                Close
+              </Button>
+              <Button onClick={importHsSelected} disabled={hsSelected.length === 0 || hsImporting}>
+                {hsImporting ? "Importing..." : "Import Selected"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model activities {
+  id               Int        @id @default(autoincrement())
+  deal_id          Int?
+  company_id       Int?
+  user_id          Int?
+  activity_type    String     @db.VarChar(50)
+  subject          String?    @db.VarChar(255)
+  description      String?
+  activity_date    DateTime?  @default(now()) @db.Timestamp(6)
+  duration_minutes Int?
+  outcome          String?    @db.VarChar(100)
+  next_steps       String?
+  attendees        Json?
+  created_at       DateTime?  @default(now()) @db.Timestamp(6)
+  companies        companies? @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  deals            deals?     @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users            users?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([company_id], map: "idx_activities_company")
+  @@index([activity_date], map: "idx_activities_date")
+  @@index([deal_id], map: "idx_activities_deal")
+  @@index([activity_type], map: "idx_activities_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ai_analyses {
+  id               Int        @id @default(autoincrement())
+  company_id       Int?
+  analysis_type    String?    @db.VarChar(50)
+  input_data       Json?
+  analysis_results Json?
+  confidence_score Decimal?   @db.Decimal(5, 2)
+  generated_by     Int?
+  model_version    String?    @db.VarChar(50)
+  created_at       DateTime?  @default(now()) @db.Timestamp(6)
+  companies        companies? @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users            users?     @relation(fields: [generated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([analysis_type], map: "idx_ai_analyses_analysis_type")
+  @@index([company_id], map: "idx_ai_analyses_company")
+  @@index([company_id], map: "idx_ai_analyses_company_id")
+  @@index([created_at(sort: Desc)], map: "idx_ai_analyses_created_at")
+  @@index([analysis_type], map: "idx_ai_analyses_type")
+}
+
+model commission_rates {
+  id              Int       @id @default(autoincrement())
+  product_id      Int?
+  deal_size_min   Decimal?  @db.Decimal(12, 2)
+  deal_size_max   Decimal?  @db.Decimal(12, 2)
+  rate_percentage Decimal   @db.Decimal(5, 2)
+  deal_type       String?   @db.VarChar(50)
+  territory       String?   @db.VarChar(100)
+  effective_from  DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  effective_to    DateTime? @db.Date
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. 
+model commission_submissions {
+  id                                               Int       @id @default(autoincrement())
+  deal_id                                          Int?
+  submitted_by                                     Int?
+  deal_value                                       Decimal   @db.Decimal(12, 2)
+  commission_rate                                  Decimal   @db.Decimal(5, 2)
+  commission_amount                                Decimal   @db.Decimal(12, 2)
+  submission_status                                String?   @default("Under Review") @db.VarChar(50)
+  submission_date                                  DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  reviewed_by                                      Int?
+  review_date                                      DateTime? @db.Date
+  approval_date                                    DateTime? @db.Date
+  payment_date                                     DateTime? @db.Date
+  rejection_reason                                 String?
+  supporting_documents                             String[]
+  notes                                            String?
+  created_at                                       DateTime? @default(now()) @db.Timestamp(6)
+  updated_at                                       DateTime? @default(now()) @db.Timestamp(6)
+  deals                                            deals?    @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_commission_submissions_reviewed_byTousers  users?    @relation("commission_submissions_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_commission_submissions_submitted_byTousers users?    @relation("commission_submissions_submitted_byTousers", fields: [submitted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([submission_date], map: "idx_commissions_date")
+  @@index([submission_status], map: "idx_commissions_status")
+  @@index([submitted_by], map: "idx_commissions_user")
+}
+
+model companies {
+  id                    Int                  @id @default(autoincrement())
+  name                  String               @db.VarChar(255)
+  industry              String?              @db.VarChar(100)
+  company_size          String?              @db.VarChar(100)
+  region                String?              @db.VarChar(100)
+  website               String?              @db.VarChar(255)
+  headquarters_location String?              @db.VarChar(255)
+  annual_revenue        Decimal?             @db.Decimal(15, 2)
+  employee_count        Int?
+  business_challenges   String?
+  current_systems       String?
+  decision_makers       Json?
+  created_by            Int?
+  created_at            DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?            @default(now()) @db.Timestamp(6)
+  budget                String?              @db.VarChar(100)
+  timeline              String?              @db.VarChar(100)
+  priority              String?              @db.VarChar(20)
+  primary_contact       Json?
+  secondary_contact     Json?
+  notes                 String?
+  tags                  Json?
+  activities            activities[]
+  ai_analyses           ai_analyses[]
+  users                 users?               @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company_files         company_files[]
+  deals                 deals[]
+  documents             documents[]
+  presentation_decks    presentation_decks[]
+
+  @@index([industry], map: "idx_companies_industry")
+  @@index([priority], map: "idx_companies_priority")
+  @@index([region], map: "idx_companies_region")
+  @@index([company_size], map: "idx_companies_size")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations
+model company_files {
+  id                Int        @id @default(autoincrement())
+  company_id        Int?
+  filename          String     @db.VarChar(255)
+  original_name     String     @db.VarChar(255)
+  file_size         Int
+  file_type         String     @db.VarChar(100)
+  category          String     @db.VarChar(50)
+  file_path         String     @db.VarChar(500)
+  uploaded_at       DateTime?  @default(now()) @db.Timestamp(6)
+  created_by        Int?
+  file_content      String?
+  content_extracted Boolean?   @default(false)
+  s3_key            String?    @db.VarChar(500)
+  companies         companies? @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users             users?     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([company_id], map: "idx_company_files_company_id")
+  @@index([s3_key], map: "idx_company_files_s3_key")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. 
+model deal_products {
+  id                     Int       @id @default(autoincrement())
+  deal_id                Int?
+  product_id             Int?
+  estimated_value        Decimal?  @db.Decimal(12, 2)
+  fit_score              Int?
+  roi_percentage         Decimal?  @db.Decimal(5, 2)
+  implementation_months  Int?
+  business_benefits      String[]
+  technical_requirements String?
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  deals                  deals?    @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([deal_id, product_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. 
+model deals {
+  id                               Int                      @id @default(autoincrement())
+  company_id                       Int?
+  deal_name                        String                   @db.VarChar(255)
+  stage                            String                   @default("Discovery") @db.VarChar(50)
+  deal_value                       Decimal?                 @db.Decimal(12, 2)
+  probability                      Int?                     @default(0)
+  expected_close_date              DateTime?                @db.Date
+  actual_close_date                DateTime?                @db.Date
+  ae_assigned                      Int?
+  sales_manager                    Int?
+  lead_source                      String?                  @db.VarChar(100)
+  competitor                       String?                  @db.VarChar(255)
+  loss_reason                      String?
+  notes                            String?
+  last_activity                    DateTime?                @default(now()) @db.Timestamp(6)
+  created_at                       DateTime?                @default(now()) @db.Timestamp(6)
+  updated_at                       DateTime?                @default(now()) @db.Timestamp(6)
+  activities                       activities[]
+  commission_submissions           commission_submissions[]
+  deal_products                    deal_products[]
+  users_deals_ae_assignedTousers   users?                   @relation("deals_ae_assignedTousers", fields: [ae_assigned], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  companies                        companies?               @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_deals_sales_managerTousers users?                   @relation("deals_sales_managerTousers", fields: [sales_manager], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  documents                        documents[]
+  presentation_decks               presentation_decks[]
+
+  @@index([ae_assigned], map: "idx_deals_ae")
+  @@index([expected_close_date], map: "idx_deals_close_date")
+  @@index([company_id], map: "idx_deals_company")
+  @@index([company_id, stage], map: "idx_deals_company_stage")
+  @@index([stage], map: "idx_deals_stage")
+  @@index([stage, ae_assigned], map: "idx_deals_stage_ae")
+  @@index([deal_value], map: "idx_deals_value")
+}
+
+/// This table contains check constraints and requires additional setup for migrations.
+model documents {
+  id                    Int        @id @default(autoincrement())
+  deal_id               Int?
+  company_id            Int?
+  document_type         String?    @db.VarChar(50)
+  file_name             String     @db.VarChar(255)
+  file_path             String?    @db.VarChar(500)
+  file_size             Int?
+  mime_type             String?    @db.VarChar(100)
+  uploaded_by           Int?
+  is_shared_with_client Boolean?   @default(false)
+  created_at            DateTime?  @default(now()) @db.Timestamp(6)
+  companies             companies? @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  deals                 deals?     @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                 users?     @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model pipeline_forecasts {
+  id                Int       @id @default(autoincrement())
+  forecast_period   String?   @db.VarChar(20)
+  user_id           Int?
+  territory         String?   @db.VarChar(100)
+  forecasted_amount Decimal?  @db.Decimal(15, 2)
+  committed_amount  Decimal?  @db.Decimal(15, 2)
+  best_case_amount  Decimal?  @db.Decimal(15, 2)
+  deals_included    Int[]
+  forecast_date     DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  users             users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model presentation_decks {
+  id             Int        @id @default(autoincrement())
+  deal_id        Int?
+  company_id     Int?
+  deck_name      String     @db.VarChar(255)
+  template_used  String?    @db.VarChar(100)
+  slides_content Json?
+  customizations Json?
+  generated_by   Int?
+  last_modified  DateTime?  @default(now()) @db.Timestamp(6)
+  created_at     DateTime?  @default(now()) @db.Timestamp(6)
+  companies      companies? @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deals          deals?     @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users          users?     @relation(fields: [generated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. 
+model sales_metrics {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int?
+  metric_period        DateTime? @db.Date
+  period_type          String?   @db.VarChar(20)
+  deals_created        Int?      @default(0)
+  deals_closed_won     Int?      @default(0)
+  deals_closed_lost    Int?      @default(0)
+  total_pipeline_value Decimal?  @default(0) @db.Decimal(15, 2)
+  revenue_closed       Decimal?  @default(0) @db.Decimal(15, 2)
+  activities_logged    Int?      @default(0)
+  avg_deal_size        Decimal?  @default(0) @db.Decimal(12, 2)
+  win_rate             Decimal?  @default(0) @db.Decimal(5, 2)
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+  users                users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, metric_period, period_type])
+}
+
+model sap_products {
+  id                Int       @id @default(autoincrement())
+  product_name      String    @db.VarChar(255)
+  description_link  String?
+  description       String?
+  category          String?   @db.VarChar(100)
+  target_industries String[]
+  key_features      String[]
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+}
+
+// New multi-tenant models
+model organizations {
+  id          Int       @id @default(autoincrement())
+  name        String?   @db.VarChar(255)
+  tier        String    @db.VarChar(50)
+  seat_limit  Int
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+  users       users[]
+  invites     org_invites[]
+}
+
+model org_invites {
+  id            Int       @id @default(autoincrement())
+  organizationId Int
+  email         String    @db.VarChar(255)
+  token         String    @unique @db.VarChar(255)
+  status        String    @default("pending") @db.VarChar(20)
+  invited_by    Int?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  expires_at    DateTime?
+
+  organizations organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@unique([organizationId, email])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. 
+model users {
+  id                                                                Int                      @id @default(autoincrement())
+  email                                                             String                   @unique @db.VarChar(255)
+  name                                                              String                   @db.VarChar(255)
+  role                                                              String?                  @default("sales_rep") @db.VarChar(50)
+  territory                                                         String?                  @db.VarChar(100)
+  phone                                                             String?                  @db.VarChar(50)
+  created_at                                                        DateTime?                @default(now()) @db.Timestamp(6)
+  updated_at                                                        DateTime?                @default(now()) @db.Timestamp(6)
+  
+  // NextAuth.js fields
+  emailVerified                                                     DateTime?
+  image                                                             String?
+  isActive                                                          Boolean                  @default(false)
+  isAdmin                                                           Boolean                  @default(false)
+  accessGrantedAt                                                   DateTime?
+  accessGrantedBy                                                   String?
+  subscriptionTier                                                  String?                  @default("basic")
+  subscriptionExpiresAt                                             DateTime?
+  organizationId                                                    Int?
+  organizations                                                     organizations?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  
+  // NextAuth.js relations
+  accounts                                                          Account[]
+  sessions                                                          Session[]
+  
+  // Existing relations
+  activities                                                        activities[]
+  ai_analyses                                                       ai_analyses[]
+  commission_submissions_commission_submissions_reviewed_byTousers  commission_submissions[] @relation("commission_submissions_reviewed_byTousers")
+  commission_submissions_commission_submissions_submitted_byTousers commission_submissions[] @relation("commission_submissions_submitted_byTousers")
+  companies                                                         companies[]
+  company_files                                                     company_files[]
+  deals_deals_ae_assignedTousers                                    deals[]                  @relation("deals_ae_assignedTousers")
+  deals_deals_sales_managerTousers                                  deals[]                  @relation("deals_sales_managerTousers")
+  documents                                                         documents[]
+  pipeline_forecasts                                                pipeline_forecasts[]
+  presentation_decks                                                presentation_decks[]
+  sales_metrics                                                     sales_metrics[]
+
+  @@index([organizationId])
+}

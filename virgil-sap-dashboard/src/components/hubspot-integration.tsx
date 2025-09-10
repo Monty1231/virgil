@@ -1,20 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useHubSpot } from '@/hooks/use-hubspot';
-import { 
-  CheckCircle, 
-  XCircle, 
-  RefreshCw, 
-  Database, 
-  Users, 
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useHubSpot } from "@/hooks/use-hubspot";
+import {
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Database,
+  Users,
   TrendingUp,
   ExternalLink,
-  Settings
-} from 'lucide-react';
+  Settings,
+  Download,
+} from "lucide-react";
 
 interface HubSpotIntegrationProps {
   className?: string;
@@ -30,42 +37,76 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
     syncContacts,
     syncDeals,
     syncAll,
-    clearError
+    clearError,
   } = useHubSpot();
 
   const [syncResults, setSyncResults] = useState<any>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [remoteCompanies, setRemoteCompanies] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
 
-  // Test connection on component mount
+  const disconnect = async () => {
+    await fetch("/api/hubspot/disconnect", { method: "POST" });
+    setSyncResults(null);
+    setRemoteCompanies([]);
+    setSelectedIds([]);
+    testConnection();
+  };
+
   useEffect(() => {
     testConnection();
   }, [testConnection]);
 
-  const handleSync = async (syncType: 'companies' | 'contacts' | 'deals' | 'all') => {
+  const handleSync = async (
+    syncType: "companies" | "contacts" | "deals" | "all"
+  ) => {
     clearError();
     let result;
-    
     switch (syncType) {
-      case 'companies':
+      case "companies":
         result = await syncCompanies();
         break;
-      case 'contacts':
+      case "contacts":
         result = await syncContacts();
         break;
-      case 'deals':
+      case "deals":
         result = await syncDeals();
         break;
-      case 'all':
+      case "all":
         result = await syncAll();
         break;
     }
-    
     setSyncResults(result);
   };
 
   const handleConnect = () => {
-    // Redirect to HubSpot OAuth
-    window.location.href = '/api/hubspot/auth?action=authorize';
+    window.location.href = "/api/hubspot/auth?action=authorize";
+  };
+
+  const fetchRemoteCompanies = async () => {
+    setRemoteCompanies([]);
+    const res = await fetch("/api/hubspot/sync");
+    const data = await res.json();
+    if (data.success) setRemoteCompanies(data.companies);
+  };
+
+  const importSelected = async () => {
+    if (selectedIds.length === 0) return;
+    setImporting(true);
+    try {
+      const res = await fetch("/api/hubspot/import/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hubspotCompanyIds: selectedIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Import failed");
+      setSelectedIds([]);
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setImporting(false);
+    }
   };
 
   const getConnectionStatus = () => {
@@ -77,7 +118,6 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
         </div>
       );
     }
-
     if (isConnected) {
       return (
         <div className="flex items-center gap-2">
@@ -86,7 +126,6 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
         </div>
       );
     }
-
     return (
       <div className="flex items-center gap-2">
         <XCircle className="h-4 w-4 text-red-600" />
@@ -103,17 +142,16 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
           HubSpot Integration
         </CardTitle>
         <CardDescription>
-          Connect your account to HubSpot to sync contacts, companies, and deals
+          Connect your account to HubSpot to sync and import companies,
+          contacts, and deals
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Connection Status */}
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Connection Status</span>
           {getConnectionStatus()}
         </div>
 
-        {/* Error Display */}
         {error && (
           <Alert variant="destructive">
             <XCircle className="h-4 w-4" />
@@ -121,7 +159,6 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
           </Alert>
         )}
 
-        {/* Success Message */}
         {syncResults?.success && (
           <Alert>
             <CheckCircle className="h-4 w-4" />
@@ -133,7 +170,6 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
 
         <Separator />
 
-        {/* Connection Actions */}
         {!isConnected ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
@@ -148,21 +184,31 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Sync Operations</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => testConnection()}
-                disabled={isLoading}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Test Connection
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testConnection()}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Test Connection
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={disconnect}
+                  disabled={isLoading}
+                >
+                  Disconnect
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Button
                 variant="outline"
-                onClick={() => handleSync('companies')}
+                onClick={() => handleSync("companies")}
                 disabled={isLoading}
                 className="h-auto p-3 flex flex-col items-start gap-2"
               >
@@ -177,7 +223,7 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
 
               <Button
                 variant="outline"
-                onClick={() => handleSync('contacts')}
+                onClick={() => handleSync("contacts")}
                 disabled={isLoading}
                 className="h-auto p-3 flex flex-col items-start gap-2"
               >
@@ -192,7 +238,7 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
 
               <Button
                 variant="outline"
-                onClick={() => handleSync('deals')}
+                onClick={() => handleSync("deals")}
                 disabled={isLoading}
                 className="h-auto p-3 flex flex-col items-start gap-2"
               >
@@ -206,7 +252,7 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
               </Button>
 
               <Button
-                onClick={() => handleSync('all')}
+                onClick={() => handleSync("all")}
                 disabled={isLoading}
                 className="h-auto p-3 flex flex-col items-start gap-2 bg-purple-600 hover:bg-purple-700"
               >
@@ -220,44 +266,91 @@ export function HubSpotIntegration({ className }: HubSpotIntegrationProps) {
               </Button>
             </div>
 
-            {/* Sync Results */}
-            {syncResults && (
-              <div className="mt-4 p-3 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">Last Sync Results</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Status:</span>
-                    <Badge variant={syncResults.success ? "default" : "destructive"}>
-                      {syncResults.success ? "Success" : "Failed"}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Items Synced:</span>
-                    <span>{syncResults.synced}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Message:</span>
-                    <span className="text-muted-foreground">{syncResults.message}</span>
-                  </div>
+            <Separator />
+
+            {/* Import from HubSpot */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Import from HubSpot</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchRemoteCompanies}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh List
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={importSelected}
+                    disabled={selectedIds.length === 0 || importing}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    {importing
+                      ? "Importing..."
+                      : `Import ${selectedIds.length || ""}`}
+                  </Button>
                 </div>
               </div>
-            )}
+
+              {remoteCompanies.length > 0 ? (
+                <div className="max-h-64 overflow-auto border rounded-md">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr className="text-left">
+                        <th className="py-2 px-3">Select</th>
+                        <th className="py-2 px-3">Name</th>
+                        <th className="py-2 px-3">Industry</th>
+                        <th className="py-2 px-3">Website</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {remoteCompanies.map((c) => (
+                        <tr key={c.id} className="border-t">
+                          <td className="py-2 px-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(c.id)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedIds((prev) =>
+                                  checked
+                                    ? [...prev, c.id]
+                                    : prev.filter((x) => x !== c.id)
+                                );
+                              }}
+                            />
+                          </td>
+                          <td className="py-2 px-3 font-medium">{c.name}</td>
+                          <td className="py-2 px-3">{c.industry}</td>
+                          <td className="py-2 px-3 truncate max-w-[240px]">
+                            {c.website ? (
+                              <a
+                                href={c.website}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {c.website}
+                              </a>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No companies loaded. Click Refresh List to load from HubSpot.
+                </p>
+              )}
+            </div>
           </div>
         )}
-
-        {/* Environment Variables Info */}
-        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-          <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-            Required Environment Variables
-          </h4>
-          <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
-            <div>• HUBSPOT_CLIENT_ID</div>
-            <div>• HUBSPOT_CLIENT_SECRET</div>
-            <div>• HUBSPOT_ACCESS_TOKEN</div>
-            <div>• HUBSPOT_REDIRECT_URI (optional)</div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
-} 
+}

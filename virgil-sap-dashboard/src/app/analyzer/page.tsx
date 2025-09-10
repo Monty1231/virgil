@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +78,7 @@ interface AIAnalysis {
   recommendedSolutions: {
     module: string;
     fit?: string;
+    fitScore?: number;
     fitJustification?: string;
     priority: number;
     estimatedROI?: number;
@@ -104,6 +106,17 @@ interface AIAnalysis {
     };
     successMetrics?: string[];
     moduleAnalysisContext?: string;
+    reasoning?: string;
+    traceability?: Array<{
+      problem: string;
+      requirement: string;
+      sap_product: string;
+      explanation: string;
+    }>;
+    aiAnalysisMethodology?: string;
+    executiveSummary?: string;
+    analysisContext?: string;
+    context?: string;
   }[];
   nextSteps: string[];
   riskFactors?: string[];
@@ -150,6 +163,18 @@ interface AIAnalysis {
     differentiators?: string[];
   };
   executiveSummary?: string;
+  companyProfileAnalysis?: string;
+  businessContextAnalysis?: string;
+  aiAnalysisMethodology?: string;
+  modules?: string[];
+  fitJustification?: string;
+  reasoning?: string;
+  traceability?: Array<{
+    problem: string;
+    requirement: string;
+    sap_product: string;
+    explanation: string;
+  }>;
 }
 
 interface AnalysisResponse {
@@ -192,7 +217,6 @@ export default function Analyzer() {
   // Fetch companies when component mounts
   useEffect(() => {
     fetchCompanies();
-    testDebugAPI();
   }, []);
 
   // Fetch previous analyses when company is selected
@@ -203,18 +227,6 @@ export default function Analyzer() {
       setPreviousAnalyses([]);
     }
   }, [selectedCompanyId]);
-
-  const testDebugAPI = async () => {
-    try {
-      console.log("🔍 Testing debug API...");
-      const response = await fetch("/api/debug-ai");
-      const data = await response.json();
-      setDebugInfo(data);
-      console.log("🔍 Debug API result:", data);
-    } catch (error) {
-      console.error("🔍 Debug API failed:", error);
-    }
-  };
 
   const fetchCompanies = async () => {
     setLoading(true);
@@ -377,8 +389,9 @@ export default function Analyzer() {
         companyId
       );
 
-      const apiUrl = `/api/ai-analysis/company/${companyId}`;
+      const apiUrl = `/api/ai-analysis/company/${companyId}/rag`;
       console.log("🤖 Analyzer: Using API URL:", apiUrl);
+      console.log("🤖 Analyzer: Using method:", "RAG");
 
       const response = await fetch(apiUrl, {
         method: "GET",
@@ -596,6 +609,10 @@ export default function Analyzer() {
                 <strong>Current Mode:</strong>{" "}
                 {useSimpleRoute ? "Simple Test Route" : "Full AI Route"}
               </p>
+              <p>
+                <strong>Analysis Method:</strong> "RAG (Retrieval-Augmented
+                Generation)"
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -694,6 +711,44 @@ export default function Analyzer() {
               </p>
             )}
 
+            {/* Mode Description */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`p-1 rounded ${
+                    useSimpleRoute ? "bg-amber-100" : "bg-slate-100"
+                  }`}
+                >
+                  <Brain
+                    className={`h-4 w-4 ${
+                      useSimpleRoute ? "text-amber-600" : "text-slate-500"
+                    }`}
+                  />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-slate-900 mb-1">
+                    {useSimpleRoute ? "Test Mode (Recommended)" : "Rag Mode"}
+                  </h4>
+                  <p className="text-xs text-slate-600">
+                    {useSimpleRoute
+                      ? "Uses Retrieval-Augmented Generation for more accurate, efficient analysis with knowledge base retrieval."
+                      : "Uses Retrieval-Augmented Generation for more accurate, efficient analysis with knowledge base retrieval."}
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <Badge variant="outline" className="text-xs">
+                      {useSimpleRoute ? "Faster" : "Faster"}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {useSimpleRoute ? "More Accurate" : "More Accurate"}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {useSimpleRoute ? "Cost Effective" : "Cost Effective"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Generate Analysis Button */}
             {selectedCompany && (
               <div className="flex gap-2">
@@ -751,7 +806,13 @@ export default function Analyzer() {
                 <CardContent className="text-center py-12">
                   <div className="flex flex-col items-center gap-4">
                     <div className="relative">
-                      <Brain className="h-12 w-12 text-indigo-600 animate-pulse" />
+                      <Image
+                        src="/darkLogo.png"
+                        alt="Virgil AI"
+                        width={48}
+                        height={48}
+                        className="animate-pulse"
+                      />
                       <Sparkles className="h-6 w-6 text-amber-500 absolute -top-1 -right-1 animate-bounce" />
                     </div>
                     <div>
@@ -919,6 +980,39 @@ export default function Analyzer() {
                   </Card>
                 </div>
 
+                {/* Fit Score Explanation */}
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-blue-600" />
+                      What is the Fit Score?
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-slate-700 text-sm leading-relaxed">
+                      <p>
+                        <strong>Fit Score</strong> is a comprehensive metric
+                        that estimates how well SAP solutions align with your
+                        company's unique profile, needs, and readiness for
+                        implementation. It considers factors such as your
+                        industry, company size, business challenges, budget,
+                        timeline, and the relevance of recommended SAP products.
+                        A higher Fit Score indicates a stronger match and a
+                        greater likelihood of successful SAP adoption and value
+                        realization.
+                      </p>
+                      <ul className="list-disc list-inside mt-3 text-slate-600 text-xs">
+                        <li>80%+ = Excellent fit for SAP solutions</li>
+                        <li>60-79% = Good fit, likely to benefit from SAP</li>
+                        <li>40-59% = Moderate fit, may require adjustments</li>
+                        <li>
+                          Below 40% = Limited fit, significant gaps to address
+                        </li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* AI Analysis Insights */}
                 <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
                   <CardHeader>
@@ -992,13 +1086,7 @@ export default function Analyzer() {
                                   Business Challenges
                                 </p>
                                 <p className="text-xs text-blue-700">
-                                  "
-                                  {selectedCompany.business_challenges.substring(
-                                    0,
-                                    120
-                                  )}
-                                  ..." directly align with SAP's core value
-                                  propositions
+                                  {selectedCompany.business_challenges}
                                 </p>
                               </div>
                             </div>
@@ -1186,10 +1274,23 @@ export default function Analyzer() {
 
                   {Array.isArray(analysisData.recommendedSolutions) ? (
                     analysisData.recommendedSolutions
-                      .sort((a, b) => a.priority - b.priority)
+                      .sort((a, b) => {
+                        const fb =
+                          typeof b.fitScore === "number"
+                            ? b.fitScore
+                            : -Infinity;
+                        const fa =
+                          typeof a.fitScore === "number"
+                            ? a.fitScore
+                            : -Infinity;
+                        if (Number.isFinite(fa) || Number.isFinite(fb)) {
+                          return fb - fa;
+                        }
+                        return (a.priority || 1) - (b.priority || 1);
+                      })
                       .map((solution, index) => (
                         <Card
-                          key={solution.module}
+                          key={`${solution.module}-${index}`}
                           className="overflow-hidden bg-slate-50 border-slate-200 shadow-md rounded-xl"
                         >
                           <CardHeader>
@@ -1206,6 +1307,14 @@ export default function Analyzer() {
                                 >
                                   {solution.fit || "Medium"} Fit
                                 </Badge>
+                                {typeof solution.fitScore === "number" && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs border-green-300 bg-green-50 text-green-700 font-semibold rounded-full px-3 py-1"
+                                  >
+                                    Fit Score {solution.fitScore.toFixed(2)}%
+                                  </Badge>
+                                )}
                                 <Badge
                                   variant="outline"
                                   className="text-xs border-slate-300 bg-slate-100 text-slate-700 font-medium rounded-full px-3 py-1"
@@ -1362,24 +1471,344 @@ export default function Analyzer() {
                                 ) : null}
                               </div>
 
-                              {/* AI Analysis Context */}
-                              <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200 col-span-full">
-                                <h5 className="font-medium text-indigo-700 mb-2 flex items-center gap-2">
-                                  <Brain className="h-4 w-4" />
+                              {/* AI Analysis Context - always show first and check alternate field names */}
+                              <div className="mb-6 p-6 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg border border-indigo-200 col-span-full shadow-sm">
+                                <h5 className="font-bold text-indigo-800 mb-4 flex items-center gap-2 text-lg">
+                                  <Brain className="h-5 w-5" />
                                   AI Analysis Context
                                 </h5>
-                                <div className="text-sm text-slate-800 space-y-2">
-                                  {solution.moduleAnalysisContext ? (
-                                    <div className="mb-2 whitespace-pre-line">
-                                      {solution.moduleAnalysisContext}
-                                    </div>
-                                  ) : (
-                                    <div className="text-slate-400 italic">
-                                      No analysis context provided.
-                                    </div>
-                                  )}
+                                <div className="text-sm text-indigo-900 space-y-4">
+                                  {(() => {
+                                    const context =
+                                      solution.moduleAnalysisContext ||
+                                      solution.analysisContext ||
+                                      solution.context;
+
+                                    if (!context) {
+                                      return (
+                                        <span className="text-slate-400 italic">
+                                          No analysis context provided.
+                                        </span>
+                                      );
+                                    }
+
+                                    // Ensure context is a string
+                                    const contextString =
+                                      typeof context === "string"
+                                        ? context
+                                        : String(context);
+
+                                    // Function to improve formatting if sections are not properly separated
+                                    const improveFormatting = (
+                                      text: string
+                                    ) => {
+                                      // If the text doesn't have proper section breaks, try to add them
+                                      if (!text.includes("\n\n")) {
+                                        // Look for common section patterns and add line breaks
+                                        return text
+                                          .replace(
+                                            /(EXECUTIVE SUMMARY:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(BUSINESS CHALLENGES ADDRESSED:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(SOLUTION OVERVIEW:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(BUSINESS IMPACT & ROI:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(IMPLEMENTATION STRATEGY:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(
+                                            /(COMPETITIVE ADVANTAGES:)/g,
+                                            "\n\n$1"
+                                          )
+                                          .replace(/(CONCLUSION:)/g, "\n\n$1")
+                                          .replace(/^\n+/, ""); // Remove leading newlines
+                                      }
+                                      return text;
+                                    };
+
+                                    // Function to handle completely unformatted text
+                                    const formatUnformattedText = (
+                                      text: string
+                                    ) => {
+                                      // If no section headers are found, try to break it into readable chunks
+                                      if (!text.match(/[A-Z\s]+:/)) {
+                                        const sentences = text
+                                          .split(/[.!?]+/)
+                                          .filter((s) => s.trim().length > 20);
+                                        const chunks: string[] = [];
+                                        let currentChunk: string = "";
+
+                                        sentences.forEach((sentence, index) => {
+                                          currentChunk +=
+                                            sentence.trim() + ". ";
+
+                                          // Break into chunks every 3-4 sentences
+                                          if (
+                                            (index + 1) % 3 === 0 ||
+                                            index === sentences.length - 1
+                                          ) {
+                                            chunks.push(currentChunk.trim());
+                                            currentChunk = "";
+                                          }
+                                        });
+
+                                        return chunks
+                                          .map(
+                                            (chunk, idx) =>
+                                              `SECTION ${idx + 1}:\n\n${chunk}`
+                                          )
+                                          .join("\n\n");
+                                      }
+                                      return text;
+                                    };
+
+                                    const improvedContextString =
+                                      formatUnformattedText(
+                                        improveFormatting(contextString)
+                                      );
+
+                                    // Debug: Log the formatting
+                                    console.log(
+                                      "🔍 AI Analysis Context Debug:",
+                                      {
+                                        original:
+                                          contextString.substring(0, 200) +
+                                          "...",
+                                        improved:
+                                          improvedContextString.substring(
+                                            0,
+                                            200
+                                          ) + "...",
+                                        hasSections:
+                                          improvedContextString.includes(
+                                            "\n\n"
+                                          ),
+                                        sectionCount: (
+                                          improvedContextString.match(
+                                            /[A-Z\s]+:/g
+                                          ) || []
+                                        ).length,
+                                      }
+                                    );
+
+                                    // Split by section headers and format as paragraphs
+                                    const sections = improvedContextString
+                                      .split(/(?=^[A-Z\s]+:)/m)
+                                      .filter(Boolean);
+
+                                    return sections.map((section, idx) => {
+                                      const lines = section
+                                        .trim()
+                                        .split("\n")
+                                        .filter((line) => line.trim());
+                                      if (lines.length === 0) return null;
+
+                                      // Check if first line is a header (ends with colon and is all caps)
+                                      const firstLine = lines[0];
+                                      const isHeader =
+                                        firstLine.endsWith(":") &&
+                                        firstLine === firstLine.toUpperCase() &&
+                                        firstLine.length > 3;
+
+                                      if (isHeader) {
+                                        const header = firstLine;
+                                        const content = lines
+                                          .slice(1)
+                                          .join(" ")
+                                          .trim();
+
+                                        // Process content to handle bullet points and formatting
+                                        const processContent = (
+                                          text: string
+                                        ) => {
+                                          if (!text) return null;
+
+                                          // Split by bullet points
+                                          const parts = text.split(/(?=•)/);
+
+                                          if (parts.length > 1) {
+                                            // Has bullet points, render as list
+                                            return (
+                                              <div>
+                                                {parts.map((part, partIdx) => {
+                                                  const trimmedPart =
+                                                    part.trim();
+                                                  if (!trimmedPart) return null;
+
+                                                  if (
+                                                    trimmedPart.startsWith("•")
+                                                  ) {
+                                                    // Bullet point
+                                                    return (
+                                                      <div
+                                                        key={partIdx}
+                                                        className="flex items-start mb-2"
+                                                      >
+                                                        <span className="text-indigo-600 mr-2 mt-0.5">
+                                                          •
+                                                        </span>
+                                                        <span className="text-indigo-700 leading-relaxed">
+                                                          {trimmedPart
+                                                            .substring(1)
+                                                            .trim()}
+                                                        </span>
+                                                      </div>
+                                                    );
+                                                  } else {
+                                                    // Regular text
+                                                    return (
+                                                      <p
+                                                        key={partIdx}
+                                                        className="text-indigo-700 leading-relaxed mb-2"
+                                                      >
+                                                        {trimmedPart}
+                                                      </p>
+                                                    );
+                                                  }
+                                                })}
+                                              </div>
+                                            );
+                                          } else {
+                                            // No bullet points, render as regular paragraph
+                                            return (
+                                              <p className="text-indigo-700 leading-relaxed">
+                                                {text}
+                                              </p>
+                                            );
+                                          }
+                                        };
+
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className="mb-6 last:mb-0"
+                                          >
+                                            <h6 className="font-bold text-indigo-900 mb-3 text-base border-b border-indigo-200 pb-2">
+                                              {header}
+                                            </h6>
+                                            {processContent(content)}
+                                          </div>
+                                        );
+                                      } else {
+                                        // If no header, treat as regular paragraph
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className="mb-4 last:mb-0"
+                                          >
+                                            <p className="text-indigo-700 leading-relaxed">
+                                              {lines.join(" ")}
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                    });
+                                  })()}
                                 </div>
                               </div>
+                              {solution.fitJustification && (
+                                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200 col-span-full">
+                                  <h5 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                                    <Target className="h-4 w-4" />
+                                    Fit Justification
+                                  </h5>
+                                  <div className="text-sm text-blue-900 whitespace-pre-line">
+                                    {solution.fitJustification}
+                                  </div>
+                                </div>
+                              )}
+                              {/* Executive Summary */}
+                              {(solution.executiveSummary ||
+                                analysisData.executiveSummary) && (
+                                <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200 col-span-full">
+                                  <h5 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4" />
+                                    Executive Summary
+                                  </h5>
+                                  <div className="text-sm text-yellow-900 whitespace-pre-line">
+                                    {solution.executiveSummary ||
+                                      analysisData.executiveSummary}
+                                  </div>
+                                </div>
+                              )}
+                              {/* AI Reasoning */}
+                              {solution.reasoning && (
+                                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200 col-span-full">
+                                  <h5 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4" />
+                                    AI Reasoning
+                                  </h5>
+                                  <div className="text-sm text-blue-900 whitespace-pre-line">
+                                    {solution.reasoning}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Traceability Chain */}
+                              {solution.traceability &&
+                                Array.isArray(solution.traceability) &&
+                                solution.traceability.length > 0 && (
+                                  <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200 col-span-full">
+                                    <h5 className="font-medium text-green-700 mb-2 flex items-center gap-2">
+                                      <Target className="h-4 w-4" />
+                                      Traceability: Problem → Requirement → SAP
+                                      Product
+                                    </h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="min-w-full text-xs text-left border border-green-200">
+                                        <thead className="bg-green-100">
+                                          <tr>
+                                            <th className="px-2 py-1 border-b border-green-200">
+                                              Problem
+                                            </th>
+                                            <th className="px-2 py-1 border-b border-green-200">
+                                              Requirement
+                                            </th>
+                                            <th className="px-2 py-1 border-b border-green-200">
+                                              SAP Product
+                                            </th>
+                                            <th className="px-2 py-1 border-b border-green-200">
+                                              Explanation
+                                            </th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {solution.traceability.map(
+                                            (item, idx) => (
+                                              <tr
+                                                key={idx}
+                                                className="border-t border-green-100"
+                                              >
+                                                <td className="px-2 py-1 align-top text-green-900">
+                                                  {item.problem}
+                                                </td>
+                                                <td className="px-2 py-1 align-top text-green-900">
+                                                  {item.requirement}
+                                                </td>
+                                                <td className="px-2 py-1 align-top text-green-900 font-semibold">
+                                                  {item.sap_product}
+                                                </td>
+                                                <td className="px-2 py-1 align-top text-green-900">
+                                                  {item.explanation}
+                                                </td>
+                                              </tr>
+                                            )
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
                             </div>
                           </CardContent>
                         </Card>
@@ -1390,168 +1819,6 @@ export default function Analyzer() {
                     </div>
                   )}
                 </div>
-
-                {/* AI Analysis Insights */}
-                <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5 text-purple-600" />
-                      AI Analysis Insights
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-6 md:grid-cols-2">
-                      {/* Company Profile Analysis */}
-                      <div className="space-y-4">
-                        <h4 className="font-semibold text-purple-900 mb-3">
-                          Company Profile Analysis
-                        </h4>
-                        <div className="space-y-3">
-                          <div className="flex items-start gap-2">
-                            <Building className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium text-purple-900">
-                                Industry Analysis
-                              </p>
-                              <p className="text-xs text-purple-700">
-                                {selectedCompany.industry} sector analysis
-                                indicates {analysisData.fitScore}% fit score
-                                based on industry benchmarks and market
-                                conditions
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <Users className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium text-purple-900">
-                                Scale Assessment
-                              </p>
-                              <p className="text-xs text-purple-700">
-                                {selectedCompany.company_size} provides optimal
-                                balance of complexity and resource availability
-                                for comprehensive SAP deployment
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium text-purple-900">
-                                Regional Factors
-                              </p>
-                              <p className="text-xs text-purple-700">
-                                {selectedCompany.region} market offers strong
-                                SAP partner ecosystem with local implementation
-                                support and expertise
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Business Context Analysis */}
-                      <div className="space-y-4">
-                        <h4 className="font-semibold text-blue-900 mb-3">
-                          Business Context Analysis
-                        </h4>
-                        <div className="space-y-3">
-                          {selectedCompany.business_challenges && (
-                            <div className="flex items-start gap-2">
-                              <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium text-blue-900">
-                                  Business Challenges
-                                </p>
-                                <p className="text-xs text-blue-700">
-                                  "
-                                  {selectedCompany.business_challenges.substring(
-                                    0,
-                                    120
-                                  )}
-                                  ..." directly align with SAP's core value
-                                  propositions
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                          {selectedCompany.current_systems && (
-                            <div className="flex items-start gap-2">
-                              <Settings className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium text-blue-900">
-                                  Current Systems
-                                </p>
-                                <p className="text-xs text-blue-700">
-                                  Integration with "
-                                  {selectedCompany.current_systems.substring(
-                                    0,
-                                    100
-                                  )}
-                                  ..." presents manageable but addressable
-                                  requirements
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                          {selectedCompany.budget && (
-                            <div className="flex items-start gap-2">
-                              <DollarSign className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium text-blue-900">
-                                  Budget Alignment
-                                </p>
-                                <p className="text-xs text-blue-700">
-                                  {selectedCompany.budget} budget range supports
-                                  comprehensive SAP implementation with
-                                  realistic ROI expectations
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                          {selectedCompany.timeline && (
-                            <div className="flex items-start gap-2">
-                              <Clock className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium text-blue-900">
-                                  Timeline Assessment
-                                </p>
-                                <p className="text-xs text-blue-700">
-                                  {selectedCompany.timeline} timeline aligns
-                                  with phased implementation approach for
-                                  optimal success
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* AI Analysis Methodology */}
-                    <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                      <h5 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-slate-600" />
-                        AI Analysis Methodology
-                      </h5>
-                      <div className="text-sm text-slate-700 space-y-2">
-                        <p>
-                          <strong>Data Sources:</strong> Industry benchmarks for{" "}
-                          {selectedCompany.industry}, regional market data for{" "}
-                          {selectedCompany.region}, current SAP pricing models,
-                          and public implementation case studies
-                        </p>
-                        <p>
-                          <strong>Calculation Method:</strong> Implementation
-                          costs based on user count × industry multiplier ×
-                          regional cost factor. Annual savings calculated from
-                          operational efficiency (25-35%), process automation
-                          (20-30%), compliance savings (10-20%)
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
                 {/* Implementation Roadmap */}
                 {analysisData.implementationRoadmap &&
@@ -1775,27 +2042,35 @@ export default function Analyzer() {
                     <div className="grid gap-2 sm:grid-cols-2">
                       {analysisData.riskFactors &&
                       Array.isArray(analysisData.riskFactors) ? (
-                        analysisData.riskFactors.map((risk, index) => (
-                          <div
-                            key={index}
-                            className="flex flex-col gap-1 p-3 bg-red-50 rounded-lg border border-red-200"
-                          >
-                            <div className="flex items-start gap-2">
-                              <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                              {typeof risk === "object" && risk !== null ? (
-                                <span className="text-sm text-red-800">
-                                  <strong>Risk:</strong> {risk.risk}
-                                  <br />
-                                  <strong>Mitigation:</strong> {risk.mitigation}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-red-800">
-                                  {risk}
-                                </span>
-                              )}
+                        analysisData.riskFactors.map(
+                          (risk: any, index: number) => (
+                            <div
+                              key={index}
+                              className="flex flex-col gap-1 p-3 bg-red-50 rounded-lg border border-red-200"
+                            >
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                                {typeof risk === "object" &&
+                                risk !== null &&
+                                "risk" in risk &&
+                                "mitigation" in risk ? (
+                                  <span className="text-sm text-red-800">
+                                    <strong>Risk:</strong> {risk.risk}
+                                    <br />
+                                    <strong>Mitigation:</strong>{" "}
+                                    {risk.mitigation}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-red-800">
+                                    {typeof risk === "string"
+                                      ? risk
+                                      : JSON.stringify(risk)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          )
+                        )
                       ) : (
                         <div className="col-span-2 text-center py-4 text-slate-400 italic">
                           No risk factors identified.
@@ -1853,6 +2128,22 @@ export default function Analyzer() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* AI Analysis Methodology */}
+                {(!analysisData.recommendedSolutions ||
+                  analysisData.recommendedSolutions.length === 0) &&
+                  analysisData.aiAnalysisMethodology && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>AI Analysis Methodology</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-sm text-slate-900 whitespace-pre-line">
+                          {analysisData.aiAnalysisMethodology}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
               </>
             )}
 
@@ -1863,7 +2154,15 @@ export default function Analyzer() {
               !analysisError && (
                 <Card>
                   <CardContent className="text-center py-12">
-                    <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+                    <div className="flex justify-center items-center mb-4">
+                      <Image
+                        src="/darkLogo.png"
+                        alt="Virgil AI"
+                        width={48}
+                        height={48}
+                        className="animate-pulse"
+                      />
+                    </div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-2">
                       Ready to Generate Comprehensive Analysis
                     </h3>
@@ -1875,7 +2174,7 @@ export default function Analyzer() {
                     </p>
                     <Button
                       onClick={() => generateAnalysis(selectedCompanyId)}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="bg-primary hover:bg-primary/90"
                     >
                       <Play className="mr-2 h-4 w-4" />
                       Generate Comprehensive Analysis
@@ -2076,7 +2375,16 @@ export default function Analyzer() {
       {!selectedCompany && companies.length > 0 && !loading && (
         <Card>
           <CardContent className="text-center py-12">
-            <Brain className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+            <div className="flex justify-center items-center mb-4">
+              <Image
+                src="/darkLogo.png"
+                alt="Virgil AI"
+                width={48}
+                height={48}
+                className="animate-pulse"
+              />
+            </div>
+
             <h3 className="text-lg font-semibold text-slate-900 mb-2">
               Select a Company for Comprehensive Analysis
             </h3>

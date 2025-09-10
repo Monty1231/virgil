@@ -2,8 +2,8 @@ import type React from "react";
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import AuthProvider from "@/components/providers/session-provider";
+import LayoutWrapper from "@/components/layout-wrapper";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,10 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${playfair.variable} font-sans`}>
-        <SidebarProvider defaultOpen={true}>
-          <AppSidebar />
-          <main className="flex-1 overflow-auto">{children}</main>
-        </SidebarProvider>
+        <AuthProvider>
+          <LayoutWrapper>{children}</LayoutWrapper>
+        </AuthProvider>
       </body>
     </html>
   );

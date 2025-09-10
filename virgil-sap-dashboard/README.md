@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Virgil SAP Dashboard
+
+A comprehensive dashboard for managing SAP sales pipeline and customer relationships.
+
+## Features
+
+- **Company Management**: Create and manage company profiles with detailed information
+- **Document Upload**: Upload and process company documents for AI analysis
+- **AI-Powered Analysis**: Generate SAP recommendations and business analysis
+- **Pipeline Management**: Track deals and opportunities
+- **RAG-Powered AI**: Retrieval-Augmented Generation for enhanced AI analysis
+
+## RAG System Performance Optimizations
+
+The RAG (Retrieval-Augmented Generation) system has been optimized for fast company creation:
+
+### Async Processing
+
+- Company creation returns immediately after database save
+- RAG processing happens asynchronously in the background
+- Users see success message instantly with background processing indicator
+
+### Optimized Data Processing
+
+- Limited file processing (max 3 files, 2 processed)
+- Smaller chunk sizes (500 chars vs 1000)
+- Reduced overlap (100 chars vs 200)
+- Maximum 10 chunks per file (vs unlimited)
+- Only processes files with substantial content (>100 chars)
+
+### Performance Benefits
+
+- **Fast Form Submission**: Company creation completes in ~1-2 seconds
+- **Background Processing**: RAG data added to Pinecone asynchronously
+- **User Feedback**: Clear indication of background processing status
+- **Scalable**: Handles multiple concurrent company creations
+
+### Technical Details
+
+- Uses Promise-based async processing
+- Batched vector database operations
+- Optimized content chunking
+- Error handling without blocking user experience
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies: `npm install`
+2. Set up environment variables (see `.env.example`)
+3. Run database migrations: `npm run migrate`
+4. Start development server: `npm run dev`
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Environment Variables
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `OPENAI_API_KEY`: OpenAI API key for AI analysis
+- `PINECONE_API_KEY`: Pinecone API key for vector database
+- `PINECONE_ENVIRONMENT`: Pinecone environment (e.g., `us-east-1-aws`)
+- Database connection variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API Endpoints
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/companies`: Create new company (with async RAG processing)
+- `GET /api/ai-analysis/company/[id]/rag`: RAG-based AI analysis
+- `POST /api/rag/initialize`: Initialize RAG knowledge base
+- `GET /api/rag/status`: Check RAG system status

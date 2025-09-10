@@ -1,4 +1,4 @@
-import { Pool } from 'pg'
+import { Pool } from "pg";
 
 // const pool = new Pool({
 //   user: 'vadmin', // replace with your actual username
@@ -22,5 +22,5 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
-})
-export default pool
+});
+export default pool;

@@ -3,6 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,7 @@ interface AIAnalysis {
     recommendedSolutions: Array<{
       module: string;
       fit: string;
+      fitScore?: number;
       priority: number;
       estimatedROI: number;
       timeToValue: string;
@@ -198,6 +200,7 @@ export default function Decks() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const [templateStyles, setTemplateStyles] = useState<any>(null);
+  const [usePythonBackend, setUsePythonBackend] = useState(true); // Default to Python backend
 
   // Form data for manual deck creation
   const [deckConfig, setDeckConfig] = useState({
@@ -220,6 +223,14 @@ export default function Decks() {
     }
   }, [selectedCompany]);
 
+  useEffect(() => {
+    // Refetch templates when backend changes
+    fetchTemplates();
+    // Clear selected template when switching backends
+    setSelectedTemplate("");
+    setTemplateStyles(null);
+  }, [usePythonBackend]);
+
   const fetchCompanies = async () => {
     try {
       const response = await fetch("/api/companies");
@@ -234,7 +245,12 @@ export default function Decks() {
 
   const fetchTemplates = async () => {
     try {
-      const response = await fetch("/api/export/powerpoint/template");
+      // Use Python backend endpoint if enabled, otherwise use original endpoint
+      const endpoint = usePythonBackend
+        ? "/api/export/powerpoint/python-template?action=list"
+        : "/api/export/powerpoint/template";
+
+      const response = await fetch(endpoint);
       if (response.ok) {
         const data = await response.json();
         setTemplates(data.templates || []);
@@ -484,7 +500,18 @@ Transforming ${analysis.industry || "Business"} Operations with SAP Solutions`,
       // Recommended Solutions
       if (recommendedSolutions.length > 0) {
         const topSolutions = recommendedSolutions
-          .sort((a, b) => (a.priority || 1) - (b.priority || 1))
+          .sort((a, b) => {
+            const fb =
+              typeof (b as any).fitScore === "number"
+                ? (b as any).fitScore
+                : -Infinity;
+            const fa =
+              typeof (a as any).fitScore === "number"
+                ? (a as any).fitScore
+                : -Infinity;
+            if (Number.isFinite(fa) || Number.isFinite(fb)) return fb - fa;
+            return (a.priority || 1) - (b.priority || 1);
+          })
           .slice(0, 3);
 
         generatedSlides.push({
@@ -495,7 +522,13 @@ Transforming ${analysis.industry || "Business"} Operations with SAP Solutions`,
               (solution) =>
                 `• SAP ${solution.module || "Solution"} - ${
                   solution.fit || "High"
-                } Fit
+                } Fit${
+                  typeof solution.fitScore === "number"
+                    ? ` (Fit Score ${(solution.fitScore as number).toFixed(
+                        2
+                      )}%)`
+                    : ""
+                }
   - ROI: ${solution.estimatedROI || 300}%
   - Time to Value: ${solution.timeToValue || "12-18 months"}
   - Investment: $${((solution.estimatedCostMin || 500000) / 1000).toFixed(
@@ -853,7 +886,12 @@ Timeline: [X] weeks to project kickoff`;
       const formData = new FormData();
       formData.append("template", file);
 
-      const response = await fetch("/api/export/powerpoint/template", {
+      // Use Python backend endpoint if enabled, otherwise use original endpoint
+      const endpoint = usePythonBackend
+        ? "/api/export/powerpoint/python-template"
+        : "/api/export/powerpoint/template";
+
+      const response = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
@@ -862,8 +900,12 @@ Timeline: [X] weeks to project kickoff`;
         const data = await response.json();
         await fetchTemplates(); // Refresh templates list
         setSelectedTemplate(data.templateId);
-        // Fetch template styles for the newly uploaded template
-        await fetchTemplateStyles(data.templateId);
+        // Fetch template info for the newly uploaded template (Python backend doesn't use styles)
+        if (usePythonBackend) {
+          await fetchTemplateInfo(data.templateId);
+        } else {
+          await fetchTemplateStyles(data.templateId);
+        }
         console.log("✅ Template uploaded successfully");
       } else {
         const errorData = await response.json();
@@ -883,12 +925,14 @@ Timeline: [X] weeks to project kickoff`;
 
   const deleteTemplate = async (templateId: string) => {
     try {
-      const response = await fetch(
-        `/api/export/powerpoint/template?id=${templateId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      // Use Python backend endpoint if enabled, otherwise use original endpoint
+      const endpoint = usePythonBackend
+        ? `/api/export/powerpoint/python-template?id=${templateId}`
+        : `/api/export/powerpoint/template?id=${templateId}`;
+
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+      });
 
       if (response.ok) {
         await fetchTemplates(); // Refresh templates list
@@ -905,6 +949,37 @@ Timeline: [X] weeks to project kickoff`;
       console.error("❌ Template deletion failed:", error);
       setError(
         `Failed to delete template: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  };
+
+  const fetchTemplateInfo = async (templateId: string) => {
+    try {
+      console.log("🔍 Fetching template info for:", templateId);
+      const response = await fetch(
+        `/api/export/powerpoint/python-template?action=info&id=${templateId}`
+      );
+
+      console.log("📡 Response status:", response.status);
+      console.log("📡 Response ok:", response.ok);
+
+      if (response.ok) {
+        const info = await response.json();
+        console.log("✅ Template info loaded:", info);
+        setTemplateStyles(info); // Store template info instead of styles
+      } else {
+        const errorData = await response.json();
+        console.error("❌ Template info fetch failed:", errorData);
+        setError(
+          `Failed to load template info: ${errorData.error || "Unknown error"}`
+        );
+      }
+    } catch (error) {
+      console.error("❌ Failed to fetch template info:", error);
+      setError(
+        `Failed to fetch template info: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
@@ -947,7 +1022,11 @@ Timeline: [X] weeks to project kickoff`;
   const handleTemplateSelection = (templateId: string) => {
     setSelectedTemplate(templateId);
     if (templateId) {
-      fetchTemplateStyles(templateId);
+      if (usePythonBackend) {
+        fetchTemplateInfo(templateId);
+      } else {
+        fetchTemplateStyles(templateId);
+      }
     } else {
       setTemplateStyles(null);
     }
@@ -969,6 +1048,53 @@ Timeline: [X] weeks to project kickoff`;
       console.log("🎨 Current template styles:", templateStyles);
       console.log("📄 Selected template:", selectedTemplate);
 
+      // Use Python backend for PowerPoint if enabled and template is selected
+      if (format === "powerpoint" && usePythonBackend && selectedTemplate) {
+        console.log("🐍 Using Python backend for PowerPoint export");
+
+        const exportData = {
+          slides,
+          deckConfig,
+          templateId: selectedTemplate,
+        };
+
+        console.log("📦 Python backend export data:", exportData);
+
+        const response = await fetch("/api/export/powerpoint/python-template", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(exportData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Failed to export to ${format}`);
+        }
+
+        // Get the filename from the response headers
+        const contentDisposition = response.headers.get("Content-Disposition");
+        const filename = contentDisposition
+          ? contentDisposition.split("filename=")[1]?.replace(/"/g, "")
+          : `${deckConfig.deckName || "presentation"}.pptx`;
+
+        // Create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        console.log(`✅ Successfully exported to ${format} via Python backend`);
+        return;
+      }
+
+      // Use original export for other formats or when Python backend is disabled
       const exportData = {
         slides,
         deckConfig,
@@ -977,7 +1103,7 @@ Timeline: [X] weeks to project kickoff`;
         customBackgroundImage, // send the image data URL to backend
       };
 
-      console.log("📦 Export data:", exportData);
+      console.log("📦 Original export data:", exportData);
 
       const response = await fetch(`/api/export/${format}`, {
         method: "POST",
@@ -1359,10 +1485,35 @@ Timeline: [X] weeks to project kickoff`;
 
             {/* PowerPoint Template Management */}
             <div className="pt-4 border-t">
-              <Label className="flex items-center gap-2 mb-3">
-                <FileText className="h-4 w-4" />
-                PowerPoint Template
-              </Label>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  PowerPoint Template
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-gray-600">Backend:</Label>
+                  <Button
+                    variant={usePythonBackend ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setUsePythonBackend(true)}
+                    className={
+                      usePythonBackend ? "bg-green-600 hover:bg-green-700" : ""
+                    }
+                  >
+                    Python
+                  </Button>
+                  <Button
+                    variant={!usePythonBackend ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setUsePythonBackend(false)}
+                    className={
+                      !usePythonBackend ? "bg-blue-600 hover:bg-blue-700" : ""
+                    }
+                  >
+                    Original
+                  </Button>
+                </div>
+              </div>
 
               {/* Template Upload */}
               <div className="space-y-3">
@@ -1556,7 +1707,13 @@ Timeline: [X] weeks to project kickoff`;
               <CardContent className="text-center py-12">
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative">
-                    <Brain className="h-12 w-12 text-purple-600 animate-pulse" />
+                    <Image
+                      src="/darkLogo.png"
+                      alt="Virgil AI"
+                      width={48}
+                      height={48}
+                      className="animate-pulse"
+                    />
                     <Sparkles className="h-6 w-6 text-yellow-500 absolute -top-1 -right-1 animate-bounce" />
                   </div>
                   <div>
@@ -1816,12 +1973,27 @@ Timeline: [X] weeks to project kickoff`;
                             variant="secondary"
                             className="text-xs opacity-75"
                           >
-                            Preview with{" "}
-                            {templateStyles
-                              ? `${
-                                  templateStyles.templateDesign || "Template"
-                                } Design`
-                              : selectedBackground.name}
+                            {usePythonBackend ? (
+                              templateStyles?.template_info ? (
+                                <>
+                                  Python Backend •{" "}
+                                  {templateStyles.template_info.slide_layouts}{" "}
+                                  layouts
+                                </>
+                              ) : (
+                                "Python Backend • Template"
+                              )
+                            ) : (
+                              <>
+                                Preview with{" "}
+                                {templateStyles
+                                  ? `${
+                                      templateStyles.templateDesign ||
+                                      "Template"
+                                    } Design`
+                                  : selectedBackground.name}
+                              </>
+                            )}
                           </Badge>
                         </div>
                       </div>

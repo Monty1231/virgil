@@ -1,11 +1,29 @@
 import sql from "@/lib/db";
 import { NextResponse } from "next/server";
+import { knowledgeBase } from "@/lib/knowledge-base";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("🏢 API: Session data:", {
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name,
+      isActive: session.user.isActive,
+      isAdmin: session.user.isAdmin,
+    });
+
     console.log("🏢 API: Fetching companies from database...");
 
-    // Build and run the SELECT query
+    // Build and run the SELECT query with user filter
     const selectQuery = `
       SELECT 
         id,
@@ -25,9 +43,10 @@ export async function GET() {
         tags,
         created_at
       FROM companies
+      WHERE created_by = $1
       ORDER BY name ASC
     `;
-    const { rows: companies } = await sql.query(selectQuery);
+    const { rows: companies } = await sql.query(selectQuery, [session.user.id]);
 
     console.log("🏢 API: Raw database result:", companies);
     console.log(
@@ -67,6 +86,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       name,
@@ -104,6 +130,52 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate field lengths to prevent database errors
+    const maxLength = 255;
+    const fieldsToCheck = {
+      name: name,
+      industry: industry,
+      company_size: company_size,
+      region: region,
+      current_systems: current_systems || "",
+      budget: budget || "",
+      timeline: timeline || "",
+      priority: priority || "",
+      notes: notes || "",
+    };
+
+    for (const [fieldName, value] of Object.entries(fieldsToCheck)) {
+      if (value && value.length > maxLength) {
+        return NextResponse.json(
+          {
+            error: `${fieldName} is too long (max ${maxLength} characters). Current length: ${value.length}`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Handle website field separately - truncate if too long
+    let truncatedWebsite = website || "";
+    if (truncatedWebsite.length > maxLength) {
+      console.log(
+        `🏢 API: Truncating website from ${truncatedWebsite.length} to ${maxLength} characters`
+      );
+      truncatedWebsite = truncatedWebsite.substring(0, maxLength);
+    }
+
+    // Handle business_challenges field separately - truncate if too long
+    let truncatedBusinessChallenges = business_challenges || "";
+    if (truncatedBusinessChallenges.length > maxLength) {
+      console.log(
+        `🏢 API: Truncating business_challenges from ${truncatedBusinessChallenges.length} to ${maxLength} characters`
+      );
+      truncatedBusinessChallenges = truncatedBusinessChallenges.substring(
+        0,
+        maxLength
+      );
+    }
+
     // Build and run the INSERT query
     const insertQuery = `
       INSERT INTO companies (
@@ -134,8 +206,8 @@ export async function POST(request: Request) {
       industry,
       company_size,
       region,
-      website || "",
-      business_challenges || "",
+      truncatedWebsite,
+      truncatedBusinessChallenges,
       current_systems || "",
       budget || "",
       timeline || "",
@@ -144,7 +216,7 @@ export async function POST(request: Request) {
       secondary_contact ? JSON.stringify(secondary_contact) : null,
       notes || "",
       tags ? JSON.stringify(tags) : null,
-      1, // created_by
+      session.user.id, // created_by - links the company to the current user
     ];
     const { rows: insertResult } = await sql.query(insertQuery, insertValues);
     const newCompany = insertResult[0];
@@ -186,6 +258,28 @@ export async function POST(request: Request) {
       }
     }
 
+    // Add company to RAG knowledge base (asynchronously)
+    try {
+      console.log("🏢 API: Starting async RAG processing...");
+      // Don't await this - let it run in the background
+      knowledgeBase
+        .initialize()
+        .then(() => knowledgeBase.addCompanyToKnowledgeBase(newCompany.id))
+        .then((chunksAdded) => {
+          console.log(
+            "🏢 API: ✅ Async RAG processing completed - Added",
+            chunksAdded,
+            "chunks to knowledge base"
+          );
+        })
+        .catch((ragError) => {
+          console.error("🏢 API: ❌ Async RAG processing failed:", ragError);
+        });
+    } catch (ragError) {
+      console.error("🏢 API: Failed to start async RAG processing:", ragError);
+      // Don't fail the request for RAG issues - company is still created successfully
+    }
+
     return NextResponse.json(newCompany, { status: 201 });
   } catch (error: any) {
     console.error("🏢 API: Error creating company:", error);
@@ -199,10 +293,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      {
-        error: "Failed to create company",
-        details: error.message,
-      },
+      { error: "Failed to create company" },
       { status: 500 }
     );
   }

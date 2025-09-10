@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getUserSalesforceConfig } from "@/lib/salesforce";
 
 interface SalesforceConfig {
   instanceUrl: string;
@@ -77,9 +80,11 @@ class SalesforceAPI {
       );
     }
 
+    const loginBase = process.env.SALESFORCE_LOGIN_URL || "https://login.salesforce.com";
+
     try {
       const response = await fetch(
-        `${this.config.instanceUrl}/services/oauth2/token`,
+        `${loginBase}/services/oauth2/token`,
         {
           method: "POST",
           headers: {
@@ -96,6 +101,12 @@ class SalesforceAPI {
 
       if (!response.ok) {
         const errorText = await response.text();
+        // Specific guidance when refresh token is invalid/expired
+        if (errorText.includes("invalid_grant")) {
+          throw new Error(
+            "Salesforce refresh token is invalid or expired. Please re-authenticate your Salesforce connection."
+          );
+        }
         throw new Error(
           `Token refresh failed: ${response.status} ${response.statusText} - ${errorText}`
         );
@@ -119,6 +130,7 @@ class SalesforceAPI {
     } catch (error) {
       console.error("Failed to refresh Salesforce access token:", error);
       throw new Error(
+        error instanceof Error ? error.message :
         "Failed to refresh Salesforce access token. Please re-authenticate."
       );
     }
@@ -210,25 +222,41 @@ class SalesforceAPI {
   }
 }
 
-// Helper function to get Salesforce configuration from environment variables
-function getSalesforceConfig(): SalesforceConfig {
-  const instanceUrl = process.env.SALESFORCE_INSTANCE_URL;
-  const accessToken = process.env.SALESFORCE_ACCESS_TOKEN;
-  const refreshToken = process.env.SALESFORCE_REFRESH_TOKEN;
+// Helper function to get Salesforce configuration for current user or fallback to env
+async function getSalesforceConfigForUser(): Promise<SalesforceConfig> {
+  const session = await getServerSession(authOptions);
+  const apiVersion = process.env.SALESFORCE_API_VERSION || "64.0";
   const clientId = process.env.SALESFORCE_CLIENT_ID;
   const clientSecret = process.env.SALESFORCE_CLIENT_SECRET;
-  const apiVersion = process.env.SALESFORCE_API_VERSION || "64.0";
 
-  if (!instanceUrl || !accessToken) {
-    throw new Error(
-      "Salesforce configuration missing. Please set SALESFORCE_INSTANCE_URL and SALESFORCE_ACCESS_TOKEN environment variables."
-    );
+  if (session?.user?.id && session.user.id !== "0") {
+    try {
+      const creds = await getUserSalesforceConfig(Number(session.user.id));
+      return {
+        instanceUrl: creds.instanceUrl,
+        accessToken: creds.accessToken,
+        refreshToken: process.env.SALESFORCE_REFRESH_TOKEN || undefined, // optional if using user refresh later
+        clientId,
+        clientSecret,
+        apiVersion,
+      };
+    } catch (e) {
+      // fallthrough to env-based config
+    }
   }
 
+  // fallback to env
+  const instanceUrl = process.env.SALESFORCE_INSTANCE_URL;
+  const accessToken = process.env.SALESFORCE_ACCESS_TOKEN;
+  if (!instanceUrl || !accessToken) {
+    throw new Error(
+      "Salesforce configuration missing. Please connect Salesforce in Settings or set env variables."
+    );
+  }
   return {
     instanceUrl,
     accessToken,
-    refreshToken,
+    refreshToken: process.env.SALESFORCE_REFRESH_TOKEN,
     clientId,
     clientSecret,
     apiVersion,
@@ -275,20 +303,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if we're in development mode (no real Salesforce credentials)
-    const isDevelopment =
-      !process.env.SALESFORCE_INSTANCE_URL ||
-      !process.env.SALESFORCE_ACCESS_TOKEN;
+    // Real Salesforce integration if user connected or env set, else mock
+    let config: SalesforceConfig | null = null;
+    try {
+      config = await getSalesforceConfigForUser();
+    } catch {
+      // no config found, fallback to mock
+    }
 
-    if (isDevelopment) {
-      // Mock response for development
+    if (!config) {
       console.log("[MOCK] Exporting to Salesforce CPQ:", commissionData);
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
       return NextResponse.json({
         success: true,
-        message:
-          "Exported to Salesforce CPQ (mock - set SALESFORCE_INSTANCE_URL and SALESFORCE_ACCESS_TOKEN for real integration)",
+        message: "Exported to Salesforce CPQ (mock - connect Salesforce in Settings)",
         data: {
           opportunity: formatCommissionForSalesforce(commissionData),
           commissionData,
@@ -296,8 +324,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Real Salesforce integration
-    const config = getSalesforceConfig();
     const sfApi = new SalesforceAPI(config);
 
     // Test the connection first
@@ -308,10 +334,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Format the commission data for Salesforce
     const opportunityData = formatCommissionForSalesforce(commissionData);
-
-    // Create the opportunity in Salesforce
     const result = await sfApi.createOpportunity(opportunityData);
 
     if (!result.success) {
@@ -332,10 +355,14 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Salesforce export error:", error);
 
-    // Provide more helpful error messages
     let errorMessage = "Failed to export to Salesforce CPQ";
     if (error instanceof Error) {
-      if (error.message.includes("401 Unauthorized")) {
+      if (
+        error.message.includes("Salesforce refresh token is invalid or expired")
+      ) {
+        errorMessage =
+          "Your Salesforce session has expired. Please reconnect Salesforce in Settings > Integrations.";
+      } else if (error.message.includes("401 Unauthorized")) {
         errorMessage =
           "Salesforce session expired. Please refresh your authentication token.";
       } else if (
@@ -343,6 +370,9 @@ export async function POST(request: Request) {
       ) {
         errorMessage =
           "Salesforce authentication failed. Please re-authenticate with Salesforce.";
+      } else if (error.message.includes("Salesforce configuration missing")) {
+        errorMessage =
+          "Salesforce not connected. Go to Settings > Integrations to connect.";
       } else if (error.message.includes("Failed to connect to Salesforce")) {
         errorMessage =
           "Unable to connect to Salesforce. Please check your configuration.";

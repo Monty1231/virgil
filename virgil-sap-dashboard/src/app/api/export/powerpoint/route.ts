@@ -388,13 +388,27 @@ export async function POST(request: NextRequest) {
     // Return the file
     const fileName = `${deckConfig.deckName || "SAP-Presentation"}.pptx`;
 
-    return new NextResponse(pptxBuffer, {
+    const byteLength = (() => {
+      if (typeof pptxBuffer === "string") return Buffer.byteLength(pptxBuffer);
+      if (pptxBuffer instanceof Uint8Array) return pptxBuffer.byteLength;
+      if (pptxBuffer instanceof ArrayBuffer) return pptxBuffer.byteLength;
+      if (typeof Blob !== "undefined" && pptxBuffer instanceof Blob)
+        return pptxBuffer.size;
+      try {
+        // Node.js Buffer
+        // @ts-ignore
+        if (Buffer.isBuffer(pptxBuffer)) return pptxBuffer.length;
+      } catch {}
+      return undefined;
+    })();
+
+    return new NextResponse(pptxBuffer as any, {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Content-Length": pptxBuffer.length.toString(),
+        ...(byteLength ? { "Content-Length": String(byteLength) } : {}),
       },
     });
   } catch (error) {

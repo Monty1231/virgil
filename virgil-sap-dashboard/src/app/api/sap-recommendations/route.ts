@@ -1,13 +1,14 @@
-import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
-import { NextResponse } from "next/server"
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { companyName, industry, size, challenges, currentSystems, budget } = body
+    const body = await request.json();
+    const { companyName, industry, size, challenges, currentSystems, budget } =
+      body;
 
-    console.log("🤖 Generating SAP recommendations for:", companyName)
+    console.log("🤖 Generating SAP recommendations for:", companyName);
 
     // Create a comprehensive prompt for OpenAI with all SAP modules
     const prompt = `You are a SAP solutions expert with comprehensive knowledge of ALL SAP modules and products. Analyze the following company information and recommend the most suitable SAP modules.
@@ -55,6 +56,12 @@ Based on the company profile, select the top 4 most relevant modules and provide
 4. Integration with current systems
 5. Budget considerations
 
+For each recommended module, provide a clear traceability chain:
+- The specific customer problem(s) it addresses
+- The requirement(s) derived from those problems
+- The SAP product and why it is the best fit
+- A clear, step-by-step reasoning chain (problem → requirement → product)
+
 Respond in JSON format:
 
 {
@@ -64,7 +71,15 @@ Respond in JSON format:
       "product_category": "[Category like ERP, Analytics, HR, etc.]",
       "description": "[2-3 sentence description of what this module does and why it fits]",
       "confidence_score": [realistic score 1-100 based on company fit],
-      "reasoning": "[Specific explanation of why this module is recommended for this company's industry, size, and challenges]"
+      "reasoning": "[Specific explanation of why this module is recommended for this company's industry, size, and challenges]",
+      "traceability": [
+        {
+          "problem": "[Customer problem]",
+          "requirement": "[Derived requirement]",
+          "sap_product": "[SAP product name]",
+          "explanation": "[How the product addresses the requirement and problem]"
+        }
+      ]
     },
     {
       "product_name": "[Second most relevant module]",
@@ -89,40 +104,120 @@ Respond in JSON format:
     }
   ],
   "summary": "[Overall recommendation summary explaining the strategic approach]"
-}`
+}`;
 
     // Generate recommendations using OpenAI
     const { text } = await generateText({
       model: openai("gpt-4o"),
       prompt: prompt,
       temperature: 0.3, // Lower temperature for more consistent recommendations
-    })
+    });
 
-    console.log("🤖 OpenAI response received")
+    console.log("🤖 OpenAI response received");
 
     // Parse the JSON response
-    let recommendations
+    let recommendations: any;
     try {
-      recommendations = JSON.parse(text)
-      console.log("🤖 Successfully parsed recommendations:", recommendations.modules?.length, "modules")
+      recommendations = JSON.parse(text);
+      // Normalize implementationRoadmap fields to always be arrays
+      if (
+        recommendations &&
+        Array.isArray(recommendations.implementationRoadmap)
+      ) {
+        recommendations.implementationRoadmap =
+          recommendations.implementationRoadmap.map((phase: any) => ({
+            ...phase,
+            activities: Array.isArray(phase.activities)
+              ? phase.activities
+              : phase.activities
+              ? [phase.activities]
+              : [],
+            deliverables: Array.isArray(phase.deliverables)
+              ? phase.deliverables
+              : phase.deliverables
+              ? [phase.deliverables]
+              : [],
+            resources: Array.isArray(phase.resources)
+              ? phase.resources
+              : phase.resources
+              ? [phase.resources]
+              : [],
+          }));
+      }
+      // If modules exist, ensure each module has fitJustification, reasoning, traceability fields if present
+      if (recommendations && Array.isArray(recommendations.modules)) {
+        recommendations.modules = recommendations.modules.map(
+          (module: any) => ({
+            ...module,
+            fitJustification:
+              module.fitJustification || module.fit_justification || "",
+            reasoning: module.reasoning || "",
+            traceability: Array.isArray(module.traceability)
+              ? module.traceability
+              : module.traceability
+              ? [module.traceability]
+              : [],
+          })
+        );
+      }
+      // Pass through extra fields if present
+      [
+        "aiAnalysisMethodology",
+        "companyProfileAnalysis",
+        "businessContextAnalysis",
+        "executiveSummary",
+        "implementationRoadmap",
+        "businessCase",
+        "financialAnalysis",
+        "competitiveAnalysis",
+        "riskFactors",
+        "nextSteps",
+        "businessChallenges",
+        "fitScore",
+        "overallFit",
+        "estimatedROI",
+        "implementationTime",
+        "recommendations",
+      ].forEach((field) => {
+        if (typeof recommendations[field] !== "undefined") {
+          recommendations[field] = recommendations[field];
+        }
+      });
+      console.log(
+        "🤖 Successfully parsed recommendations:",
+        recommendations.modules?.length,
+        "modules"
+      );
     } catch (parseError) {
-      console.error("Failed to parse OpenAI response as JSON:", parseError)
-      console.log("Raw response:", text.substring(0, 500))
+      console.error("Failed to parse OpenAI response as JSON:", parseError);
+      console.log("Raw response:", text.substring(0, 500));
       // Fallback recommendations based on industry
-      recommendations = getIntelligentFallbackRecommendations(industry, size, challenges)
+      recommendations = getIntelligentFallbackRecommendations(
+        industry,
+        size,
+        challenges
+      );
     }
 
-    return NextResponse.json(recommendations)
+    return NextResponse.json(recommendations);
   } catch (error) {
-    console.error("SAP recommendations error:", error)
+    console.error("SAP recommendations error:", error);
 
     // Return fallback recommendations on error
-    const fallback = getIntelligentFallbackRecommendations("Technology", "Medium", "")
-    return NextResponse.json(fallback)
+    const fallback = getIntelligentFallbackRecommendations(
+      "Technology",
+      "Medium",
+      ""
+    );
+    return NextResponse.json(fallback);
   }
 }
 
-function getIntelligentFallbackRecommendations(industry: string, size: string, challenges: string) {
+function getIntelligentFallbackRecommendations(
+  industry: string,
+  size: string,
+  challenges: string
+) {
   // Industry-specific module mapping
   const industryModules: Record<string, any[]> = {
     Manufacturing: [
@@ -150,7 +245,8 @@ function getIntelligentFallbackRecommendations(industry: string, size: string, c
         description:
           "Business intelligence and analytics platform for data-driven decision making and operational insights.",
         confidence_score: 85,
-        reasoning: "Critical for manufacturing analytics, production optimization, and supply chain visibility.",
+        reasoning:
+          "Critical for manufacturing analytics, production optimization, and supply chain visibility.",
       },
     ],
     "Financial Services": [
@@ -175,7 +271,8 @@ function getIntelligentFallbackRecommendations(industry: string, size: string, c
       {
         product_name: "Customer Experience",
         product_category: "CRM",
-        description: "Customer relationship management suite for sales, service, and marketing in financial services.",
+        description:
+          "Customer relationship management suite for sales, service, and marketing in financial services.",
         confidence_score: 82,
         reasoning:
           "Essential for managing customer relationships, cross-selling opportunities, and service delivery in banking.",
@@ -203,7 +300,8 @@ function getIntelligentFallbackRecommendations(industry: string, size: string, c
       {
         product_name: "Analytics Cloud",
         product_category: "Analytics",
-        description: "Healthcare analytics for patient outcomes, operational efficiency, and regulatory reporting.",
+        description:
+          "Healthcare analytics for patient outcomes, operational efficiency, and regulatory reporting.",
         confidence_score: 85,
         reasoning:
           "Critical for healthcare analytics, patient outcome tracking, and operational performance monitoring.",
@@ -231,7 +329,8 @@ function getIntelligentFallbackRecommendations(industry: string, size: string, c
       {
         product_name: "Commerce Cloud",
         product_category: "E-commerce",
-        description: "E-commerce platform for digital commerce, customer experience, and online business operations.",
+        description:
+          "E-commerce platform for digital commerce, customer experience, and online business operations.",
         confidence_score: 83,
         reasoning:
           "Technology companies often need robust e-commerce capabilities for digital product sales and customer engagement.",
@@ -259,18 +358,19 @@ function getIntelligentFallbackRecommendations(industry: string, size: string, c
       {
         product_name: "Customer Experience",
         product_category: "CRM",
-        description: "Customer relationship management for retail sales, service, and marketing across all channels.",
+        description:
+          "Customer relationship management for retail sales, service, and marketing across all channels.",
         confidence_score: 87,
         reasoning:
           "Critical for retail customer management, personalization, and cross-channel customer service delivery.",
       },
     ],
-  }
+  };
 
-  const modules = industryModules[industry] || industryModules["Technology"]
+  const modules = industryModules[industry] || industryModules["Technology"];
 
   return {
     modules: modules.slice(0, 4), // Return top 4 modules
     summary: `Recommended SAP modules for ${industry} industry focusing on core business processes, industry-specific requirements, and scalability for ${size} organizations.`,
-  }
+  };
 }

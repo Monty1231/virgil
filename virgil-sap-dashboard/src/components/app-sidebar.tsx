@@ -9,10 +9,14 @@ import {
   Settings,
   DollarSign,
   Bot,
+  Users,
+  LogOut,
+  PieChart,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { useSession, signOut } from "next-auth/react";
 
 import {
   Sidebar,
@@ -29,7 +33,7 @@ import {
 const menuItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: BarChart3,
   },
   {
@@ -48,9 +52,14 @@ const menuItems = [
     icon: FileText,
   },
   {
-    title: "Pipeline Tracker",
+    title: "Pipeline",
     url: "/pipeline",
     icon: Kanban,
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: PieChart,
   },
   {
     title: "Commission Submission",
@@ -64,33 +73,39 @@ const menuItems = [
   },
 ];
 
+const adminMenuItems = [
+  {
+    title: "User Management",
+    url: "/admin",
+    icon: Users,
+  },
+];
+
 export function AppSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar-background">
-      <SidebarHeader className="border-b border-sidebar-border p-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-12">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar-background flex flex-col">
+      <SidebarHeader className="border-b border-sidebar-border pl-0 pr-0 py-0">
+        <div className="flex items-center justify-start gap-0">
+          <div className="flex-shrink-0 -ml-4">
             <Image
               src="/Virgil_blue.svg"
-              alt="My Logo"
-              width={32}
-              height={32}
-              className="h-51 w-51 rounded-full object-cover"
+              alt="Virgil Logo"
+              width={120}
+              height={120}
+              className="h-48 w-auto object-contain"
             />
           </div>
-          <div>
-            <h1 className="text-subheading font-semibold text-sidebar-foreground">
-              Virgil AI
-            </h1>
-            <p className="text-caption text-sidebar-muted-foreground">
-              SAP Sales Assistant
-            </p>
+          <div className="flex-shrink-0 min-w-0 flex-1 -ml-12">
+            <h1 className="text-sm font-semibold text-sidebar-foreground truncate"></h1>
+            <p className="text-xs text-sidebar-muted-foreground truncate"></p>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+
+      <SidebarContent className="flex-1">
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-muted-foreground font-medium">
             Navigation
@@ -101,7 +116,11 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.url}
+                    isActive={
+                      pathname === item.url ||
+                      (item.url !== "/pipeline" &&
+                        pathname.startsWith(item.url))
+                    }
                     className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
                   >
                     <Link href={item.url}>
@@ -114,7 +133,74 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin Section */}
+        {session?.user?.isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-muted-foreground font-medium">
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={
+                        pathname === item.url || pathname.startsWith(item.url)
+                      }
+                      className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
+
+      {/* User Section - Fixed at bottom */}
+      {session?.user && (
+        <div className="border-t border-sidebar-border p-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors">
+            <div className="flex-shrink-0">
+              {session.user.image ? (
+                <img
+                  src={session.user.image}
+                  alt={session.user.name || "User"}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center">
+                  <span className="text-xs font-medium text-white">
+                    {session.user.name?.charAt(0) || "U"}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {session.user.name || "User"}
+              </p>
+              <p className="text-xs text-sidebar-muted-foreground truncate">
+                {session.user.email}
+              </p>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+              className="flex-shrink-0 p-1 rounded-md hover:bg-sidebar-accent transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="h-4 w-4 text-sidebar-muted-foreground hover:text-sidebar-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
     </Sidebar>
   );
 }

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import sql from "@/lib/db";
 import { S3Service } from "@/lib/s3";
+import pdfParse from "pdf-parse";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,10 +67,24 @@ export async function POST(request: NextRequest) {
         fileContent = buffer.toString("utf-8");
         contentExtracted = true;
       } else if (file.type === "application/pdf") {
-        // For PDFs, we'll need to extract text (this is a placeholder)
-        // In a real implementation, you'd use a PDF parsing library
-        fileContent = `[PDF Content: ${file.name}] - Content extraction would be implemented with a PDF library`;
-        contentExtracted = true;
+        // For PDFs, download from S3 and extract text using pdf-parse
+        try {
+          const s3Buffer = await S3Service.downloadFile(s3FileInfo.key);
+          const data = await pdfParse(s3Buffer);
+          fileContent = data.text;
+          contentExtracted = !!fileContent && fileContent.length > 0;
+        } catch (pdfError: any) {
+          console.error("PDF parsing error:", pdfError);
+          if (
+            pdfError.message?.includes("bad XRef") ||
+            pdfError.message?.includes("FormatError")
+          ) {
+            fileContent = `[PDF appears to be corrupted or has invalid structure: ${file.name}]`;
+          } else {
+            fileContent = `[PDF content extraction failed: ${file.name}]`;
+          }
+          contentExtracted = false;
+        }
       } else {
         // For other file types, provide a placeholder
         fileContent = `[${file.type} Content: ${file.name}] - Content extraction would be implemented for this file type`;

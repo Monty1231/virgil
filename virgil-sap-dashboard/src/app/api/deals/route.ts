@@ -1,11 +1,39 @@
 import sql from "@/lib/db";
 import { NextResponse } from "next/server";
+import { knowledgeBase } from "@/lib/knowledge-base";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     console.log("Fetching deals from database...");
 
-    const deals = await sql.query(`
+    // Optional filter by companyId from query string
+    // Note: Next.js route handler without request arg; read from headers
+    // If you want stronger typing, switch signature to (request: Request)
+    let companyId: number | null = null;
+    try {
+      const url = new URL((globalThis as any).request?.url || "http://localhost");
+      const c = url.searchParams.get("companyId");
+      if (c) companyId = Number(c);
+    } catch {}
+
+    const params: any[] = [session.user.id];
+    let where = "WHERE d.ae_assigned = $1";
+    if (companyId) {
+      params.push(companyId);
+      where += " AND d.company_id = $2";
+    }
+
+    const deals = await sql.query(
+      `
       SELECT 
         d.id,
         d.deal_name,
@@ -14,13 +42,17 @@ export async function GET() {
         d.notes,
         d.last_activity,
         d.expected_close_date,
+        d.company_id,
         c.name as company_name,
         u.name as ae_name
       FROM deals d
       LEFT JOIN companies c ON d.company_id = c.id
       LEFT JOIN users u ON d.ae_assigned = u.id
+      ${where}
       ORDER BY d.last_activity DESC
-    `);
+    `,
+      params
+    );
 
     console.log("Database query result:", deals);
     console.log("Number of deals found:", deals.rows.length);
@@ -60,6 +92,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+
+    // Check if user is authenticated and active
+    if (!session?.user?.isActive || session?.user?.id === "0") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       company_name,
@@ -81,19 +120,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Look up company ID by name
+    // Look up company ID by name (only companies created by current user)
     let company_id;
     if (company_name) {
       const companyResult = await sql.query(
-        "SELECT id FROM companies WHERE name = $1",
-        [company_name]
+        "SELECT id FROM companies WHERE name = $1 AND created_by = $2",
+        [company_name, session.user.id]
       );
 
       if (companyResult.rows.length === 0) {
         // Create the company if it doesn't exist
         const newCompanyResult = await sql.query(
-          "INSERT INTO companies (name, industry, company_size, region) VALUES ($1, $2, $3, $4) RETURNING id",
-          [company_name, "Unknown", "Unknown", "Unknown"]
+          "INSERT INTO companies (name, industry, company_size, region, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+          [company_name, "Unknown", "Unknown", "Unknown", session.user.id]
         );
         company_id = newCompanyResult.rows[0].id;
         console.log("Created new company with ID:", company_id);
@@ -103,21 +142,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Look up user ID by name
-    let ae_assigned = 1; // Default to user ID 1 if no AE specified
-    if (ae_name) {
-      const userResult = await sql.query(
-        "SELECT id FROM users WHERE name = $1",
-        [ae_name]
-      );
-
-      if (userResult.rows.length > 0) {
-        ae_assigned = userResult.rows[0].id;
-        console.log("Found AE with ID:", ae_assigned);
-      } else {
-        console.log("AE not found, using default ID:", ae_assigned);
-      }
-    }
+    // Use current user as the AE assigned
+    const ae_assigned = session.user.id;
 
     const result = await sql.query(
       `
@@ -137,6 +163,29 @@ export async function POST(request: Request) {
     );
 
     console.log("Deal created:", result.rows[0]);
+
+    // Update company data in RAG knowledge base
+    try {
+      console.log("🔄 Deals API: Updating company in RAG knowledge base...");
+      await knowledgeBase.initialize(); // Ensure knowledge base is initialized
+
+      // Remove existing company data and add updated data
+      await knowledgeBase.removeCompanyFromKnowledgeBase(company_id);
+      const chunksAdded = await knowledgeBase.addCompanyToKnowledgeBase(
+        company_id
+      );
+      console.log(
+        "🔄 Deals API: Updated company in RAG knowledge base with",
+        chunksAdded,
+        "chunks"
+      );
+    } catch (ragError) {
+      console.error(
+        "🔄 Deals API: Failed to update company in RAG knowledge base:",
+        ragError
+      );
+      // Don't fail the request for RAG issues - deal is still created successfully
+    }
 
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error) {

@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+"""
+FastAPI endpoint for PowerPoint template processing using python-pptx
+"""
+
+import os
+import tempfile
+import json
+from typing import List, Dict, Any, Optional
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+import boto3
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+from template_handler import TemplateHandler, process_template_request
+
+# Load environment variables
+load_dotenv()
+
+app = FastAPI(title="PowerPoint Template API", version="1.0.0")
+
+# Database configuration
+DB_CONFIG = {
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'database': os.getenv('DB_NAME', 'virgil'),
+    'user': os.getenv('DB_USER', 'postgres'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'port': os.getenv('DB_PORT', '5432')
+}
+
+# S3 configuration
+S3_CONFIG = {
+    'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+    'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY'),
+    'region_name': os.getenv('AWS_REGION', 'us-east-1'),
+    'bucket_name': 'new-account-file-upload'  # Hardcode the correct bucket name
+}
+
+# Debug: Print S3 configuration (without sensitive data)
+print("🔧 DEBUGGING S3 CONFIGURATION")
+print(f"🔧 S3 Config - Region: {S3_CONFIG['region_name']}, Bucket: {S3_CONFIG['bucket_name']}")
+print(f"🔧 S3 Config - Has Access Key: {bool(S3_CONFIG['aws_access_key_id'])}, Has Secret Key: {bool(S3_CONFIG['aws_secret_access_key'])}")
+print(f"🔧 Raw AWS_S3_BUCKET_NAME env var: {os.getenv('AWS_S3_BUCKET_NAME')}")
+
+# Initialize S3 client only if credentials are available
+s3_client = None
+if S3_CONFIG.get('aws_access_key_id') and S3_CONFIG.get('aws_secret_access_key'):
+    try:
+        s3_client = boto3.client('s3', **{k: v for k, v in S3_CONFIG.items() if k != 'bucket_name'})
+        # Test if the bucket exists
+        try:
+            s3_client.head_bucket(Bucket=S3_CONFIG['bucket_name'])
+            print("✅ S3 client initialized successfully and bucket exists")
+        except Exception as bucket_error:
+            print(f"❌ S3 bucket '{S3_CONFIG['bucket_name']}' does not exist or is not accessible: {bucket_error}")
+            s3_client = None
+    except Exception as e:
+        print(f"❌ Failed to initialize S3 client: {e}")
+        s3_client = None
+else:
+    print("⚠️ No S3 credentials found, will use local storage")
+
+class SlideData(BaseModel):
+    """Model for slide data"""
+    type: str
+    title: str
+    content: str
+    order: int
+
+class PresentationRequest(BaseModel):
+    """Model for presentation creation request"""
+    slides: List[SlideData]
+    deck_config: Dict[str, Any]
+    template_id: Optional[str] = None
+
+def get_db_connection():
+    """Get database connection"""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        return conn
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+        # Return None instead of raising exception to allow graceful fallback
+        return None
+
+def download_template_from_s3(s3_key: str) -> str:
+    """Download template from S3 and return local file path"""
+    try:
+        # Create temporary file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pptx')
+        temp_path = temp_file.name
+        temp_file.close()
+        
+        # Download from S3
+        s3_client.download_file(S3_CONFIG['bucket_name'], s3_key, temp_path)
+        
+        return temp_path
+        
+    except Exception as e:
+        print(f"Failed to download template from S3: {e}")
+        # Return None instead of raising exception
+        return None
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    # Debug output when health check is called
+    print("🔧 HEALTH CHECK - S3 Config Debug:")
+    print(f"🔧 S3 Config - Region: {S3_CONFIG['region_name']}, Bucket: {S3_CONFIG['bucket_name']}")
+    print(f"🔧 S3 Config - Has Access Key: {bool(S3_CONFIG['aws_access_key_id'])}, Has Secret Key: {bool(S3_CONFIG['aws_secret_access_key'])}")
+    print(f"🔧 Raw AWS_S3_BUCKET_NAME env var: {os.getenv('AWS_S3_BUCKET_NAME')}")
+    print(f"🔧 S3 Client: {s3_client}")
+    
+    return {"status": "healthy", "service": "PowerPoint Template API"}
+
+@app.get("/templates")
+async def list_templates():
+    """List available templates"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            # Return empty list if database is not available
+            return {"templates": []}
+            
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        query = """
+            SELECT id, filename, original_name, file_size, uploaded_at, s3_key
+            FROM company_files 
+            WHERE category = 'templates' 
+            ORDER BY uploaded_at DESC
+        """
+        
+        cursor.execute(query)
+        templates = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "templates": [
+                {
+                    "id": template['filename'],
+                    "name": template['original_name'].replace('.pptx', ''),
+                    "uploadedAt": template['uploaded_at'].isoformat(),
+                    "size": template['file_size'],
+                    "s3Key": template['s3_key']
+                }
+                for template in templates
+            ]
+        }
+        
+    except Exception as e:
+        print(f"Failed to list templates: {e}")
+        # Return empty list instead of error
+        return {"templates": []}
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
+
+@app.get("/templates/{template_id}/info")
+async def get_template_info(template_id: str):
+    """Get template information and available layouts"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Get template info from database
+        query = """
+            SELECT s3_key, original_name 
+            FROM company_files 
+            WHERE filename = %s AND category = 'templates'
+        """
+        
+        cursor.execute(query, (template_id,))
+        template = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Download template from S3
+        template_path = download_template_from_s3(template['s3_key'])
+        
+        if not template_path:
+            raise HTTPException(status_code=500, detail="Failed to download template")
+        
+        try:
+            # Load template and get info
+            handler = TemplateHandler(template_path)
+            if not handler.load_template():
+                raise HTTPException(status_code=500, detail="Failed to load template")
+            
+            template_info = handler.get_template_info()
+            available_layouts = handler.get_available_layouts()
+            
+            return {
+                "template_info": template_info,
+                "available_layouts": available_layouts,
+                "original_name": template['original_name']
+            }
+            
+        finally:
+            # Clean up temporary file
+            if template_path and os.path.exists(template_path):
+                os.unlink(template_path)
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to get template info: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get template info")
+
+@app.post("/presentations/create")
+async def create_presentation(request: PresentationRequest):
+    """Create a presentation using a template"""
+    try:
+        template_path = None
+        
+        try:
+            if request.template_id:
+                # Get template from database
+                conn = get_db_connection()
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                
+                query = """
+                    SELECT s3_key, original_name 
+                    FROM company_files 
+                    WHERE filename = %s AND category = 'templates'
+                """
+                
+                cursor.execute(query, (request.template_id,))
+                template = cursor.fetchone()
+                
+                cursor.close()
+                conn.close()
+                
+                if not template:
+                    raise HTTPException(status_code=404, detail="Template not found")
+                
+                # Download template from S3
+                template_path = download_template_from_s3(template['s3_key'])
+            else:
+                # Use default template or create without template
+                raise HTTPException(status_code=400, detail="Template ID is required")
+            
+            # Prepare slide data
+            slides_data = []
+            for slide in request.slides:
+                slides_data.append({
+                    'type': slide.type,
+                    'title': slide.title,
+                    'content': slide.content,
+                    'order': slide.order
+                })
+            
+            # Sort slides by order
+            slides_data.sort(key=lambda x: x['order'])
+            
+            # Create output file
+            output_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pptx')
+            output_path = output_file.name
+            output_file.close()
+            
+            # Process template and create presentation
+            result = process_template_request(template_path, slides_data, output_path)
+            
+            if not result['success']:
+                raise HTTPException(status_code=500, detail=result.get('error', 'Failed to create presentation'))
+            
+            # Return the file
+            return FileResponse(
+                path=output_path,
+                filename=f"{request.deck_config.get('deckName', 'presentation')}.pptx",
+                media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
+            
+        finally:
+            # Clean up temporary files
+            if template_path and os.path.exists(template_path):
+                os.unlink(template_path)
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to create presentation: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create presentation")
+
+@app.post("/templates/upload")
+async def upload_template(file: UploadFile = File(...)):
+    """Upload a new template"""
+    try:
+        # Validate file type
+        if not file.filename.lower().endswith('.pptx'):
+            raise HTTPException(status_code=400, detail="Only .pptx files are supported")
+        
+        # Validate file size (10MB limit)
+        if file.size > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File size must be less than 10MB")
+        
+        # Read file content
+        content = await file.read()
+        
+        # Generate unique filename
+        import time
+        timestamp = int(time.time() * 1000)
+        filename = f"{timestamp}_{file.filename.replace(' ', '_')}"
+        
+        # For testing without S3/database, save to local file
+        try:
+            # Try to upload to S3 if configured and client is available
+            if s3_client and S3_CONFIG.get('aws_access_key_id') and S3_CONFIG.get('aws_secret_access_key'):
+                s3_key = f"templates/{filename}"
+                print(f"Attempting to upload to S3: {S3_CONFIG['bucket_name']}/{s3_key}")
+                s3_client.put_object(
+                    Bucket=S3_CONFIG['bucket_name'],
+                    Key=s3_key,
+                    Body=content,
+                    ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                )
+                print("✅ S3 upload successful")
+            else:
+                # No S3 client or credentials, skip to local storage
+                raise Exception("No S3 client or credentials configured")
+            
+            # Try to store in database if available
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                
+                query = """
+                    INSERT INTO company_files (
+                        filename, original_name, file_size, file_type, category, 
+                        file_path, s3_key, uploaded_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """
+                
+                cursor.execute(query, (
+                    filename,
+                    file.filename,
+                    file.size,
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    "templates",
+                    f"/api/files/{s3_key}",
+                    s3_key,
+                    "NOW()"
+                ))
+                
+                file_id = cursor.fetchone()[0]
+                
+                conn.commit()
+                cursor.close()
+                conn.close()
+                
+                return {
+                    "success": True,
+                    "templateId": filename,
+                    "originalName": file.filename,
+                    "size": file.size,
+                    "id": file_id,
+                    "s3Key": s3_key
+                }
+            else:
+                # Database not available, return mock response
+                return {
+                    "success": True,
+                    "templateId": filename,
+                    "originalName": file.filename,
+                    "size": file.size,
+                    "id": 1,
+                    "s3Key": s3_key
+                }
+                
+        except Exception as s3_db_error:
+            print(f"S3/DB upload failed, using local storage: {s3_db_error}")
+            
+            # Fallback: save to local directory for testing
+            import os
+            upload_dir = "uploads/templates"
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            file_path = os.path.join(upload_dir, filename)
+            with open(file_path, "wb") as f:
+                f.write(content)
+            
+            print(f"✅ Template saved locally to: {file_path}")
+            
+            return {
+                "success": True,
+                "templateId": filename,
+                "originalName": file.filename,
+                "size": file.size,
+                "id": 1,
+                "s3Key": f"local/{file_path}",
+                "localPath": file_path
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to upload template: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload template")
+
+@app.delete("/templates/{template_id}")
+async def delete_template(template_id: str):
+    """Delete a template"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Get template info
+        query = """
+            SELECT s3_key FROM company_files 
+            WHERE filename = %s AND category = 'templates'
+        """
+        
+        cursor.execute(query, (template_id,))
+        template = cursor.fetchone()
+        
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Delete from S3
+        try:
+            s3_client.delete_object(
+                Bucket=S3_CONFIG['bucket_name'],
+                Key=template['s3_key']
+            )
+        except Exception as e:
+            print(f"Failed to delete from S3: {e}")
+            # Continue with database deletion
+        
+        # Delete from database
+        delete_query = """
+            DELETE FROM company_files 
+            WHERE filename = %s AND category = 'templates'
+        """
+        
+        cursor.execute(delete_query, (template_id,))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        return {"success": True}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to delete template: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete template")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
