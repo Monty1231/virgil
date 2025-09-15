@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform the data to match the frontend expectations
-    const transformedUsers = users.map((user) => ({
+    const transformedUsers = users.map((user: any) => ({
       id: user.id.toString(),
       name: user.name,
       email: user.email,

@@ -42,9 +42,9 @@ export async function POST() {
         { status: 404 }
       );
 
-    const usedSeats = org.users.filter((u) => u.isActive).length;
+    const usedSeats = org.users.filter((u: any) => u.isActive).length;
     const pendingSeats = org.invites.filter(
-      (i) => i.status === "pending"
+      (i: any) => i.status === "pending"
     ).length;
     if (usedSeats + pendingSeats >= org.seat_limit) {
       return NextResponse.json(
@@ -64,7 +64,7 @@ export async function POST() {
         organizationId: org.id,
         email: me.email,
         token,
-        invited_by: org.users.find((u) => u.isAdmin)?.id || null,
+        invited_by: org.users.find((u: any) => u.isAdmin)?.id || null,
         status: "pending",
       },
       select: { id: true, email: true, token: true, status: true },

@@ -36,9 +36,9 @@ export async function POST(request: Request) {
         { status: 404 }
       );
 
-    const usedSeats = org.users.filter((u) => u.isActive).length; // count only active users
+    const usedSeats = org.users.filter((u: any) => u.isActive).length; // count only active users
     const pendingSeats = org.invites.filter(
-      (i) => i.status === "pending"
+      (i: any) => i.status === "pending"
     ).length;
     const available = org.seat_limit - usedSeats - pendingSeats;
     if (available <= 0)

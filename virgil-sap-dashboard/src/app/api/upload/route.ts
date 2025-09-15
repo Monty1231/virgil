@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import sql from "@/lib/db";
 import { S3Service } from "@/lib/s3";
-import pdfParse from "pdf-parse";
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,6 +69,7 @@ export async function POST(request: NextRequest) {
         // For PDFs, download from S3 and extract text using pdf-parse
         try {
           const s3Buffer = await S3Service.downloadFile(s3FileInfo.key);
+          const pdfParse = (await import("pdf-parse")).default;
           const data = await pdfParse(s3Buffer);
           fileContent = data.text;
           contentExtracted = !!fileContent && fileContent.length > 0;

@@ -46,7 +46,7 @@ export async function POST(
         { status: 404 }
       );
     }
-    const activeCount = org.users.filter((u) => u.isActive).length;
+    const activeCount = org.users.filter((u: any) => u.isActive).length;
     if (activeCount >= org.seat_limit) {
       return NextResponse.json(
         { error: "No seats available" },
