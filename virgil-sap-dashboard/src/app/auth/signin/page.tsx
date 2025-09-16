@@ -33,7 +33,7 @@ export default function SignIn() {
     setError("");
 
     try {
-      const result = await signIn("google", { callbackUrl: "/auth/signin" });
+      const result = await signIn("google", { callbackUrl: "/" });
 
       if (result?.error) {
         if (result.error === "AccessDenied") {
