@@ -9,7 +9,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN apk add --no-cache libc6-compat openssl
-# Provide build-time placeholders to avoid SDK init failures during next build
+# Build-time placeholders (fine)
 ENV NEXTAUTH_URL=http://localhost:3000 \
     NEXTAUTH_SECRET=build_dummy_secret \
     GOOGLE_CLIENT_ID=build_dummy \
@@ -24,7 +24,11 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 RUN apk add --no-cache libc6-compat openssl
 COPY --from=build /app ./
 EXPOSE 3000
-CMD ["npm","start"] 
+
+CMD ["npx","next","start","-p","3000","-H","0.0.0.0"]

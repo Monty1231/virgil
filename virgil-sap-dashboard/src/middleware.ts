@@ -54,12 +54,13 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - api/auth (auth API routes)
      * - api/checkout (Stripe checkout APIs)
+     * - api/health (health checks)
      * - checkout (server redirect to Stripe)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (public folder)
      */
-    "/((?!api/auth|api/checkout|checkout|_next/static|_next/image|favicon.ico|darkLogo.png|Virgil_blue.svg|vercel.svg|globe.svg|window.svg|next.svg|file.svg|pricing).*)",
+    "/((?!api/auth|api/checkout|api/health|checkout|_next/static|_next/image|favicon.ico|darkLogo.png|Virgil_blue.svg|vercel.svg|globe.svg|window.svg|next.svg|file.svg|pricing).*)",
   ],
 };
